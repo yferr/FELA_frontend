@@ -1,0 +1,635 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Morocco",
+        "city": "Rabat"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8416,
+          34.0209
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Brazil",
+        "city": "BrazilC"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -51.9253,
+          -14.235
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Brazil",
+        "city": "Florianópolis"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -48.55854,
+          -27.5935
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Malaysia",
+        "city": "Sarawak"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          110.3592,
+          1.5533
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Belgium",
+        "city": "Brujes"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          3.22417,
+          51.20889
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Ghana",
+        "city": "Accra"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.205874,
+          5.614818
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Mexico",
+        "city": "Aguascalientes"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -102.2916,
+          21.8853
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Nepal",
+        "city": "Dhulikhel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          85.5423,
+          27.6226
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Chile",
+        "city": "Santiago de Chile"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.6693,
+          -33.4489
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "USA",
+        "city": "USAc"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -98.5795,
+          39.8283
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "USA",
+        "city": "Orlando"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -81.3792,
+          28.5383
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "USA",
+        "city": "New York"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -74.005974,
+          40.712776
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Poland",
+        "city": "Warsaw"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          21.0122,
+          52.2297
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "the Netherlands",
+        "city": "Amsterdam"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4.904139,
+          52.367573
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "the Netherlands",
+        "city": "Deventer"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.1639,
+          52.255
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Singapore",
+        "city": "Singapore"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          103.8198,
+          1.3521
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Australia",
+        "city": "AustraliaC"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          133.7751,
+          -25.2744
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Australia",
+        "city": "Canberra"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          149.13,
+          -35.2809
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "France",
+        "city": "Paris"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          1.8883,
+          46.6034
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Spain",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.7492,
+          40.4637
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Argentina",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64,
+          -34
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Germany",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          10.4515,
+          51.1657
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Nigeria",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          8.6753,
+          9.082
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Sweden",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          18.6435,
+          60.1282
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Finland",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          26,
+          64
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Democratic Republic of Congo",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          21.7587,
+          -4.0383
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Kenya",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          36.8219,
+          -1.2921
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Barbados",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -59.5432,
+          13.1939
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Republica Dominicana",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.1627,
+          18.7357
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Trinidad And Tobago",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -61.2225,
+          10.6918
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Chad",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          18.7322,
+          15.4542
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Rwanda",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          29.8739,
+          -1.9403
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Egypt",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          30.8025,
+          26.8206
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Armenia",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          45.0382,
+          40.0691
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Indonesia",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          113.9213,
+          -0.7893
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Fiji",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          178.065,
+          -17.7134
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Sri Lanka",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.7718,
+          7.8731
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Kingdom of Saudi Arabia",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          45.0792,
+          23.8859
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "China",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          103,
+          35.8617
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Online",
+        "city": "Online"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -40.65,
+          28.68
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "United Kingdom",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.436,
+          55.3781
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "-",
+        "city": "-"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -40.65,
+          28.68
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Slovenia",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.9955,
+          46.1512
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Latvia",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          24.6032,
+          56.8796
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "country": "Sierra Leone",
+        "city": ""
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -11.7799,
+          8.4606
+        ]
+      }
+    }
+  ]
+}

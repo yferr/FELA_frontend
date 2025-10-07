@@ -1,0 +1,187 @@
+<!DOCTYPE HTML>
+
+<html>
+
+    <head>
+	
+	    <title>Divulgación del FELA </title>
+        <meta charset="UTF-8">
+ 		<link rel="stylesheet" type="text/css" href="./css/bootstrap.css">
+        <link rel="stylesheet" type="text/css" href="./css/leaflet.css">
+		<link rel="stylesheet" type="text/css" href="./css/all.css">
+		<link rel="stylesheet" type="text/css" href="./css/app.css">
+
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+		<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+		<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
+		<link rel="manifest" href="./site.webmanifest">
+	</head>
+	
+	<body>
+
+		  <!-- Main Menu -->
+		<nav id="main-menu">
+			<button class="menu-item" data-section="home">Inicio</button>
+			<button class="menu-item" data-section="map">Mapa</button>
+			<button class="menu-item" data-section="help">Ayuda</button>
+			<button class="menu-item" data-section="about">Acerca de</button>
+		</nav>
+
+		<div id="loading" class="loading">
+			<div>Cargando datos de eventos...</div>
+		</div>
+
+
+		</div>
+		<!-- Main Area -->
+		<div id="main-area">
+			<!-- Map container -->
+			<div id="map-container" class="section visible">
+				<div id="map">
+						    <!-- Menú lateral de filtros -->
+					<div class="controls-container" ></div>
+					<div class="position-absolute top-1 end-0 m-3 z-3">
+						<div class="btn-group-vertical">
+							<!-- Eventos -->
+							<div class="btn-group dropend mb-2">
+								<button type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown">
+									🌍 Eventos
+								</button>
+								<ul class="dropdown-menu">
+									<li><a class="dropdown-item" href="#" onclick="filterBy('event', 'country')">Ver por país</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('event', 'city')">Ver por ciudad</a></li>
+								</ul>
+							</div>
+
+							<!-- Ponentes -->
+							<button type="button" class="btn btn-secondary mb-2" onclick="filterBy('speaker')">
+								👥 Aurtores/Ponentes
+							</button>
+
+							<!-- Idiomas -->
+							<div class="btn-group dropend mb-2">
+								<button type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown">
+									🗣️ Idiomas
+								</button>
+								<ul class="dropdown-menu">
+									<li><a class="dropdown-item" href="#" onclick="filterBy('lang', 'Español')">Español</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('lang', 'Inglés')">Inglés</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('lang', 'Arábico')">Árabe</a></li>
+								</ul>
+							</div>
+
+							<!-- Organismos -->
+							<div class="btn-group dropend mb-2">
+								<button type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown">
+									🏛️ Organismos
+								</button>
+								<ul class="dropdown-menu">
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'FIG')">FIG</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'UN-GGIM')">UN-GGIM</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'EuroSDR')">EuroSDR</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'IGN France')">IGN France</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'UN-GGIM Europe')">UN-GGIM Europe</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'EuroGeographics')">EuroGeographics</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'UFSC (Federal University of Santa Catarina)')">UFSC</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'PCC')">PCC</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'CLRKEN EuroGeographics')">CLRKEN EuroGeographics</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'CPCI')">CPCI</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'UN-GGIM Américas')">UN-GGIM Américas</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'Geospatial World')">Geospatial World</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'School for Land Administration Studies (SLAS)')">SLAS</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'Kadaster')">Kadaster</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'ITC Faculty')">ITC Faculty</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'University of Twente and School of Geomatic Sciences')">University of Twente and School of Geomatic Sciences</a></li>
+									<li><a class="dropdown-item" href="#" onclick="filterBy('agc', 'Land Survey Engineering at Institut Agronomique et Vétérinaire Hassan II')">Land Survey Engineering at Institut Agronomique et Vétérinaire Hassan II</a></li>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+    		<div id="home-container" class="section">
+				<div class="fila">
+					<img src="./imgs/nova.png"class="laterali">
+					<img src="./imgs/UPV.png"class="centro">
+					<img src="./imgs/CCASAT.png"class="laterald">
+				</div>
+				<div id="inside-container">
+					<h1> FELA </h1> <h6>(Framework for Effective Land Administration)</h6>
+					<h2> Marco para la Administracion Efectiva del Territorio </h2>
+					<p> La tierra siempre ha sido esencial para la humanidad, no solo como espacio físico para habitar y desarrollarse, sino también como un pilar fundamental de la economía y la estabilidad de los países. En este contexto, los sistemas de administración del territorio constituyen la base para la gestión eficiente de este valioso recurso. Sin embargo, en muchas partes del mundo, estos sistemas aún presentan importantes deficiencias: las relaciones entre las personas y la tierra no están completamente documentadas —como ocurre con catastros incompletos o desactualizados—, existen marcos legales ambiguos, y la coordinación institucional es ineficiente, con datos no estandarizados ni compartidos adecuadamente. Estas limitaciones dificultan una gobernanza territorial eficaz y evidencian la necesidad urgente de adaptar los sistemas existentes a las demandas sociales, económicas y tecnológicas contemporáneas.</p>
+					<p> En respuesta a estos desafíos, se ha desarrollado el Marco para la Administración Efectiva del Territorio (FELA, por sus siglas en inglés) con miras a contribuir al diseño e implementación de sistemas de administración de tierras modernos, eficientes y adecuados al propósito. Dado que la mayoría de la población no goza de derechos seguros sobre la tierra, FELA cobra relevancia al promover sociedades más sostenibles e inclusivas, acelerando los esfuerzos para asegurar los derechos sobre la tierra y la propiedad para todos. Este marco proporciona una guía estratégica hacia los planes de acción específicos de los países y aboga por el fortalecimiento continuo de los procedimientos, técnicas y herramientas de administración y manejo territorial. El marco enfatiza que la administración del territorio debe ser conforme para el propósito, apropiada y adecuada, interoperable y sostenible, flexible e inclusiva.</p>
+					<p> FELA nace del Comité de Expertos de las Naciones Unidas sobre Administración del Territorio, integrado en el grupo de esta organización sobre la gestión de la información geoespacial (UN-GGIM) y es una referencia para desarrollar, renovar, reformar, fortalecer, modernizar o monitorear la administración territorial, consciente de las prioridades y circunstancias nacionales. Se alinea con el Marco Integrado de Información Geoespacial (UN-IGIF) y tiene como fin apoyar el cumplimiento de los Objetivos de Desarrollo Sostenible (ODSs) proporcionando una visión integral para la administración efectiva del territorio.</p>
+					<p> FELA busca proporcionar una guía para mejorar las prácticas del manejo de territorio de los países, con el objetivo de abordar diferencias críticas en la gobernanza de la tierra y promover el desarrollo sostenible, garantizando que los sistemas de administración del territorio sean eficientes, igualitarios y responsables con las necesidades sociales. </p>
+					<img src="./imgs/FELA2.png" alt="Nueve lineamientos del marco para la administración efectiva del territorio" class="centrada1">
+					<div class="notas-figuras">
+						<p>Figura 1. Nueve lineamientos del marco para la administración efectiva del territorio</p>
+					</div>
+					<p> Los requisitos y objetivos del FELA están alineados directamente con las vías estratégicas de UN-IGIF, por consiguiente, las nueve vías estratégicas para guiar su implementación abarcan: gobernanza, políticas, aspectos financieros, gestión de datos, innovación, normas y estándares, asociaciones, capacitación y educación, promoción y comunicación. Estas vías tienen como finalidad promover relaciones seguras entre las personas y la tierra, apoyar la innovación responsable, y fomentar alianzas para el desarrollo social, medioambiental y económico </p>
+					<img src="./imgs/FELA1.png" alt="Visión general de los objetivos, requisitos y rutas de FELA" class="centrada2">
+					<div class="notas-figuras">
+						<p>Figura 2. Visión general de los objetivos, requisitos y rutas de FELA</p>
+					</div>
+					<p> Al alinearse con UN-IGIF, FELA asegura que las prácticas de administración del territorio están integradas con estrategias de gestión de información geoespacial, promoviendo la interoperabilidad y el intercambio de datos entre diferentes sectores. Esto facilita la toma de decisiones basada en evidencia, mejora la coherencia de las políticas y apoya el seguimiento eficaz del progreso hacia el cumplimiento de los ODSs.</p>
+					<p> En el presente proyecto se propuso identificar el estado de divulgación de FELA. Para ello se realizó una investigación documental de los eventos realizados en el mundo, se organizó esta información en tablas que permitieron la posterior síntesis de informacion que se visualiza en el apartado MAPA de esta página.</p>
+					
+				</div>
+			</div>
+    		<div id="help-container" class="section">
+				<div class="fila">
+					<img src="./imgs/nova.png"class="laterali">
+					<img src="./imgs/UPV.png"class="centro">
+					<img src="./imgs/CCASAT.png"class="laterald">
+				</div>
+				<h1> Información de las vistas</h1>
+				<p> Para la representación de eventos en los que se abordó el Marco para la Administración Efectiva del Territorio, se han dispuesto diferentes formas de visualización: por eventos, ponentes, idioma y organismo organizador.</p>
+				<h2> Vista por Eventos </h2>
+				<p> En la vista por eventos se ofrecen dos opciones de visualización: por país y por ciudad. En la modalidad por país, se agrupan los eventos que han tenido lugar en un determinado país; al desplegar la información se muestra el detalle de cada evento, los títulos de las presentaciones y los ponentes correspondientes. En la visualización por ciudad, los eventos se ubican geográficamente sobre la ciudad donde se realizaron, agrupando aquellos que coinciden en la misma ubicación.</p>
+				<h2> Vista por Ponentes </h2>
+				<p> En esta vista se identifican en el mapa los países de origen de los ponentes. Así, un país que presente más de un ponente indica la participación de varios representantes provenientes de dicho territorio.</p>
+				<h2> Vista por Idiomas </h2>
+				<p> En la visualización por idiomas, los eventos se organizan según el idioma en que se impartieron las ponencias, siendo inglés, español y árabe los idiomas utilizados.</p>
+				<h2> Vista por Organismos </h2>
+				<p> En la vista por organismos, los eventos se agrupan de acuerdo con las diferentes agencias y entidades que los organizaron, tales como la FIG, UN-GGIM, CPCI, entre otros. </p>
+				<h3> Nota </h3>
+				<p> El punto visualizado en medio del Atlántico corresponde a eventos que se realizaron en modalidad en línea.</p>
+			</div>
+			<div id="about-container" class="section">
+				<div class="fila">
+					<img src="./imgs/nova.png"class="laterali">
+					<img src="./imgs/UPV.png"class="centro">
+					<img src="./imgs/CCASAT.png"class="laterald">
+				</div>
+				<h4> El presente proyecto surge en colaboracion de: </h4>
+				<h5> Cátedra de Nova Cartografía</h5>
+						<p>El desarrollo de este proyecto fue posible gracias a la financiación de Nova Cartografía y de la Cátedra homónima adscrita a la Escuela Técnica Superior de Ingeniería Geodésica, Cartográfica y Topográfica (ETSIGCT) de la Universitat Politècnica de València (UPV). En el marco de esta Cátedra se convocaron becas de I+D+i, una de las cuales permitió la realización de este trabajo.</p>
+						
+				<div class="row">
+					<div class="col">
+						<h5> CCASAT </h5>
+						<p> Coordinación Cartográfica en el Sistema de Administración del Territorio (CCASAT) es un grupo con sede en la UPV, España; en el Departamento de Ingeniería Cartográfica, Geodesia y Fotogrametría (DICGF) y en la ETSIGCT.</p>	
+					</div>
+  					<div class="col">
+						<h5> Elsie-Yadira Fernández-Rea </h5>
+						<p> Estudiante de Master en Ingeniería Geomática y Geoinformación de la UPV. Especializada en Sistemas de información geográfica y desarrollo web.</p>
+					</div>
+				</div>
+				<div class="row">
+					<div class="col">
+						<h5> Carmen Femenía-Ribera </h5>
+						<p> Profesora Titular de Catastro en la UPV desde 1998. Doctora Ingeniera en Geodesia y Cartografía. Departamento de Ingeniería Cartográfica, Geodesia y Fotogrametría. Escuela de Ingeniería Topográfica. Especialista en catastro y administración del territorio. </p>
+					</div>
+					<div class="col">
+						<h5> Gaspar Mora-Navarro </h5>
+						<p> Profesor de sistemas de información geográfica y desarrollo web. Doctor Ingeniero en Geodesia y Cartografía. Perteneciente al DICGF, de la UPV. Escuela de Ingeniería Topográfica. Especializado en Sistemas de Información Geográfica, bases de datos geoespaciales, modelos de datos, infraestructuras de datos espaciales, metadatos geográficos, y desarrollo web.</p>
+					</div>
+				</div>
+			</div>
+		</div>
+        <script language="javascript" type="text/javascript" src="./js/bootstrap.js"></script>
+		<script language="javascript" type="text/javascript" src="./js/leaflet.js"></script>
+		<script language="javascript" type="text/javascript" src="./js/app.js"></script>
+		
+	</body>
+
+</html>

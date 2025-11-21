@@ -1,6 +1,17 @@
+import axios from 'axios';
+// Leaflet
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { initAuthButton } from './auth.js';
+import { initEditor } from './editor.js';
+// Bootstrap
+//import 'bootstrap/dist/css/bootstrap.min.css';
+//import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+
 let map;
 let eventsData = {};
-let countriesGeoJSON = {};
+let countriesGeoJSON = {}; // Solo países
+let citiesGeoJSON = {};    // Solo ciudades
 let currentView = 'events'; // 'events', 'speakers', 'language', 'agency'
 let currentLocationView = 'country'; // 'country' or 'city'
 let filterLanguage = null; 
@@ -10,7 +21,14 @@ let eventsLayer;
 let speakersLayer;
 let languagesLayer = L.layerGroup();
 let agenciesLayer = L.layerGroup(); 
+window.map = null;
+window.eventsLayer = null;
+window.speakersLayer = null;
+window.languagesLayer = null;
+window.agenciesLayer = null;
 
+// Configuración de la API
+const API_BASE_URL = 'http://localhost:8888/FELA';
 
 // Main Menu switching
 document.querySelectorAll('.menu-item').forEach(button => {
@@ -31,7 +49,7 @@ document.querySelectorAll('.menu-item').forEach(button => {
   });
 });
 
-// Initialize the map
+/* Initialize the map
 function initMap() {
 	map = L.map('map').setView([40.0, 0.0], 3);
 	
@@ -46,23 +64,294 @@ function initMap() {
 	languagesLayer = L.layerGroup();
 	agenciesLayer = L.layerGroup();
 }
+*/
+//Initialize the map
+function initMap() {
+	// Crear mapa y asignarlo a variable global
+	window.map = L.map('map').setView([40.0, 0.0], 3);
+	map = window.map; // Mantener compatibilidad
+	
+	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+		attribution: '© OpenStreetMap contributors'
+	}).addTo(map);
+	
+	// Asignar layers a variables globales
+	window.eventsLayer = L.layerGroup().addTo(map);
+	eventsLayer = window.eventsLayer;
+	
+	window.speakersLayer = L.layerGroup();
+	speakersLayer = window.speakersLayer;
+	
+	window.languagesLayer = L.layerGroup();
+	languagesLayer = window.languagesLayer;
+	
+	window.agenciesLayer = L.layerGroup();
+	agenciesLayer = window.agenciesLayer;
+}
 
-// Function to load data
+// Function to show loading state
+function showLoading(message = 'Cargando datos de eventos...') {
+	const loadingDiv = document.getElementById('loading');
+	loadingDiv.innerHTML = `<div>${message}</div>`;
+	loadingDiv.style.display = 'block';
+}
+
+// Function to hide loading state
+function hideLoading() {
+	document.getElementById('loading').style.display = 'none';
+}
+// Function to show error
+function showError(message) {
+	const loadingDiv = document.getElementById('loading');
+	loadingDiv.innerHTML = `
+		<div style="color: #dc3545; padding: 20px;">
+			<h3>❌ Error</h3>
+			<p>${message}</p>
+			<button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; cursor: pointer;">
+				🔄 Reintentar
+			</button>
+		</div>
+	`;
+	loadingDiv.style.display = 'block';
+}
+
+
+//-------------------------
+// NUEVA: Function to extract unique languages from events data
+function extractUniqueLanguages(eventsData) {
+	const languagesSet = new Set();
+	
+	Object.keys(eventsData).forEach(year => {
+		Object.keys(eventsData[year]).forEach(eventTitle => {
+			eventsData[year][eventTitle].forEach(event => {
+				Object.keys(event.titles).forEach(titleKey => {
+					event.titles[titleKey].forEach(presentation => {
+						// language puede ser string o array
+						const languages = Array.isArray(presentation.language) 
+							? presentation.language 
+							: [presentation.language];
+						
+						languages.forEach(lang => {
+							if (lang && lang.trim() !== '') {
+								languagesSet.add(lang.trim());
+							}
+						});
+					});
+				});
+			});
+		});
+	});
+	
+	// Convertir Set a Array y ordenar alfabéticamente
+	return Array.from(languagesSet).sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+// NUEVA: Function to extract unique agencies from events data
+function extractUniqueAgencies(eventsData) {
+	const agenciesSet = new Set();
+	
+	Object.keys(eventsData).forEach(year => {
+		Object.keys(eventsData[year]).forEach(eventTitle => {
+			eventsData[year][eventTitle].forEach(event => {
+				// agency puede ser string o array
+				const agencies = Array.isArray(event.agency) 
+					? event.agency 
+					: [event.agency];
+				
+				agencies.forEach(agency => {
+					if (agency && agency.trim() !== '') {
+						agenciesSet.add(agency.trim());
+					}
+				});
+			});
+		});
+	});
+	
+	// Convertir Set a Array y ordenar alfabéticamente
+	return Array.from(agenciesSet).sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+// NUEVA: Function to populate languages dropdown
+function populateLanguagesDropdown(languages) {
+	const dropdown = document.getElementById('languages-dropdown');
+	
+	if (!dropdown) {
+		console.error('No se encontró el dropdown de idiomas con id "languages-dropdown"');
+		return;
+	}
+	
+	// Limpiar contenido existente
+	dropdown.innerHTML = '';
+	
+	// Crear items del dropdown
+	languages.forEach(language => {
+		const li = document.createElement('li');
+		const a = document.createElement('a');
+		
+		a.className = 'dropdown-item';
+		a.href = '#';
+		a.textContent = language;
+		a.onclick = (e) => {
+			e.preventDefault();
+			filterBy('lang', language);
+		};
+		
+		li.appendChild(a);
+		dropdown.appendChild(li);
+	});
+	
+	console.log(`✅ Dropdown de idiomas poblado con ${languages.length} opciones:`, languages);
+}
+
+// NUEVA: Function to populate agencies dropdown
+function populateAgenciesDropdown(agencies) {
+	const dropdown = document.getElementById('agencies-dropdown');
+	
+	if (!dropdown) {
+		console.error('No se encontró el dropdown de organismos con id "agencies-dropdown"');
+		return;
+	}
+	
+	// Limpiar contenido existente
+	dropdown.innerHTML = '';
+	
+	// Crear items del dropdown
+	agencies.forEach(agency => {
+		const li = document.createElement('li');
+		const a = document.createElement('a');
+		
+		a.className = 'dropdown-item';
+		a.href = '#';
+		a.textContent = agency;
+		a.onclick = (e) => {
+			e.preventDefault();
+			filterBy('agc', agency);
+		};
+		
+		li.appendChild(a);
+		dropdown.appendChild(li);
+	});
+	
+	console.log(`✅ Dropdown de organismos poblado con ${agencies.length} opciones:`, agencies);
+}
+
+// NUEVA: Function to populate all dynamic dropdowns
+function populateAllDropdowns() {
+	console.log('🔄 Poblando dropdowns dinámicos...');
+	
+	// Extraer valores únicos
+	const uniqueLanguages = extractUniqueLanguages(eventsData);
+	const uniqueAgencies = extractUniqueAgencies(eventsData);
+	
+	// Poblar dropdowns
+	populateLanguagesDropdown(uniqueLanguages);
+	populateAgenciesDropdown(uniqueAgencies);
+	
+	console.log('✅ Dropdowns poblados exitosamente');
+}
+//-----
+
+
+// Function to load data with Axios
 async function loadData() {
 	try {
-		const response = await fetch('./datos_completos.json');
-		const data = await response.json();
+		showLoading('Cargando datos de eventos...');
 		
+		// Realizar petición con Axios
+		const response = await axios.get(`${API_BASE_URL}/geojson/`, {
+			timeout: 30000, // 30 segundos de timeout
+			headers: {
+				'Content-Type': 'application/json',
+			}
+		});
+		
+		// Validar que la respuesta tenga la estructura esperada
+		if (!response.data) {
+			throw new Error('La respuesta del servidor está vacía');
+		}
+		
+		const data = response.data;
+		
+		// Validar estructura de datos
+		if (!data.events) {
+			throw new Error('La respuesta no contiene datos de eventos');
+		}
+		
+		if (!data.countriesGeoJSON || !data.countriesGeoJSON.features) {
+			throw new Error('La respuesta no contiene datos de países');
+		}
+		
+		if (!data.citiesGeoJSON || !data.citiesGeoJSON.features) {
+			throw new Error('La respuesta no contiene datos de ciudades');
+		}
+		
+		// Asignar datos a variables globales
 		eventsData = data.events;
 		countriesGeoJSON = data.countriesGeoJSON;
+		citiesGeoJSON = data.citiesGeoJSON;
 		
-		document.getElementById('loading').style.display = 'none';
+		console.log('✅ Datos cargados correctamente:', {
+			eventos: Object.keys(eventsData).length,
+			países: countriesGeoJSON.features.length,
+			ciudades: citiesGeoJSON.features.length
+		});
+		populateAllDropdowns();
+		hideLoading();
 		displayEventsOnMap();
 		
 	} catch (error) {
-		console.error('Error loading data:', error);
+		console.error('❌ Error al cargar datos:', error);
+		
+		// Manejo específico de errores
+		let errorMessage = 'Error desconocido al cargar los datos';
+		
+		if (error.code === 'ECONNABORTED') {
+			errorMessage = 'La petición tardó demasiado. Por favor, verifica tu conexión.';
+		} else if (error.response) {
+			// El servidor respondió con un código de error
+			errorMessage = `Error del servidor (${error.response.status}): ${error.response.statusText}`;
+			
+			if (error.response.status === 404) {
+				errorMessage = 'No se encontró el endpoint. Verifica que el servidor esté corriendo en http://localhost:8888';
+			} else if (error.response.status === 500) {
+				errorMessage = 'Error interno del servidor. Revisa los logs del backend.';
+			}
+		} else if (error.request) {
+			// La petición se hizo pero no hubo respuesta
+			errorMessage = `No se pudo conectar con el servidor en ${API_BASE_URL}. Verifica que:
+				<br>• El servidor Django esté corriendo
+				<br>• CORS esté configurado correctamente
+				<br>• La URL sea correcta`;
+		} else {
+			errorMessage = error.message;
+		}
+		
+		showError(errorMessage);
 	}
 }
+
+// Function to retry loading (placeholder para implementación futura)
+function retryLoadData() {
+	// TODO: Implementar lógica de reintentos automáticos
+	// Ejemplo: intentar 3 veces con delay exponencial
+}
+
+//// Function to load data
+//async function loadData() {
+//	try {
+//		const response = await fetch('./datos_completos.json');
+//		const data = await response.json();
+//		
+//		eventsData = data.events;
+//		countriesGeoJSON = data.countriesGeoJSON;
+//		
+//		document.getElementById('loading').style.display = 'none';
+//		displayEventsOnMap();
+//		
+//	} catch (error) {
+//		console.error('Error loading data:', error);
+//	}
+//}
 
 // Function to switch between main views (events/speakers)
 function switchView(viewType) {
@@ -122,11 +411,15 @@ function displayCurrentView() {
 	}
 }
 
-// Function to get coordinates by matching cityPais with city in GeoJSON
-function getCoordinatesByCityPais(cityPais) {
+// Function to get coordinates by country name (NUEVA)
+function getCoordinatesByCountry(countryName) {
+	if (!countryName || countryName.trim() === '' || countryName === '-') {
+		return null;
+	}
+	
 	if (countriesGeoJSON && countriesGeoJSON.features) {
 		const feature = countriesGeoJSON.features.find(f => 
-			f.properties.city.toLowerCase() === cityPais.toLowerCase()
+			f.properties.country.toLowerCase() === countryName.toLowerCase()
 		);
 		if (feature) {
 			return {
@@ -138,10 +431,14 @@ function getCoordinatesByCityPais(cityPais) {
 	return null;
 }
 
-// Function to get coordinates by city name
+// Function to get coordinates by city name (ACTUALIZADA)
 function getCoordinatesByCity(cityName) {
-	if (countriesGeoJSON && countriesGeoJSON.features) {
-		const feature = countriesGeoJSON.features.find(f => 
+	if (!cityName || cityName.trim() === '' || cityName === '-') {
+		return null;
+	}
+	
+	if (citiesGeoJSON && citiesGeoJSON.features) {
+		const feature = citiesGeoJSON.features.find(f => 
 			f.properties.city.toLowerCase() === cityName.toLowerCase()
 		);
 		if (feature) {
@@ -154,20 +451,7 @@ function getCoordinatesByCity(cityName) {
 	return null;
 }
 
-// Function to get country name from GeoJSON by city
-function getCountryByCity(cityName) {
-	if (countriesGeoJSON && countriesGeoJSON.features) {
-		const feature = countriesGeoJSON.features.find(f => 
-			f.properties.city.toLowerCase() === cityName.toLowerCase()
-		);
-		if (feature) {
-			return feature.properties.country;
-		}
-	}
-	return null;
-}
-
-//Events
+//EVENTS
 
 // Function to display events on map
 function displayEventsOnMap() {
@@ -185,8 +469,8 @@ function displayEventsOnMap() {
 					const place = event.place[0]; // Take first place
 					
 					if (currentLocationView === 'country') {
-						// Use country from event and coordinates from cityPais match
-						coordinates = getCoordinatesByCityPais(place.cityPais);
+						// Use country coordinates
+						coordinates = getCoordinatesByCountry(place.country);
 						locationKey = place.country;
 						locationName = place.country;
 					} else {
@@ -250,7 +534,8 @@ function addEventMarker(location, layer) {
 	});
 	
 	const marker = L.marker([coordinates.lat, coordinates.lon], {
-		icon: customIcon
+		icon: customIcon,
+		eventData: events[0]
 	}).addTo(layer);
 	
 	// Create popup with detailed information
@@ -329,7 +614,6 @@ function createPopupContent(locationName, events) {
 	return content;
 }
 
-
 //SPEAKERS
 
 // Function to display speakers on map
@@ -352,18 +636,7 @@ function displaySpeakersOnMap() {
 								const speakerCountry = speaker.country_s.trim();
 								
 								// Get coordinates for speaker country
-								let coordinates = null;
-								if (countriesGeoJSON && countriesGeoJSON.features) {
-									const feature = countriesGeoJSON.features.find(f => 
-										f.properties.country.toLowerCase() === speakerCountry.toLowerCase()
-									);
-									if (feature) {
-										coordinates = {
-											lat: feature.geometry.coordinates[1],
-											lon: feature.geometry.coordinates[0]
-										};
-									}
-								}
+								const coordinates = getCoordinatesByCountry(speakerCountry);
 								
 								if (coordinates) {
 									if (!speakerLocations.has(speakerCountry)) {
@@ -531,15 +804,10 @@ function displayLanguageFilteredMap() {
 							if (event.place && event.place.length > 0) {
 								const place = event.place[0];
 								
-								if (currentLocationView === 'country') {
-									coordinates = getCoordinatesByCityPais(place.cityPais);
-									locationKey = place.country;
-									locationName = place.country;
-								} else {
-									coordinates = getCoordinatesByCity(place.city);
-									locationKey = place.city;
-									locationName = `${place.city}, ${place.country}`;
-								}
+								// SIEMPRE usar coordenadas de país para languages
+								coordinates = getCoordinatesByCountry(place.country);
+								locationKey = place.country;
+								locationName = place.country;
 							}
 							
 							if (coordinates && coordinates.lat && coordinates.lon) {
@@ -719,36 +987,30 @@ function displayAgencyFilteredMap() {
 					
 					if (event.place && event.place.length > 0) {
 						const place = event.place[0];
-						
-						if (currentLocationView === 'country') {
-							coordinates = getCoordinatesByCityPais(place.cityPais);
-							locationKey = place.country;
-							locationName = place.country;
-						} else {
-							coordinates = getCoordinatesByCity(place.city);
-							locationKey = place.city;
-							locationName = `${place.city}, ${place.country}`;
+
+						// SIEMPRE usar coordenadas de país para languages
+						coordinates = getCoordinatesByCountry(place.country);
+						locationKey = place.country;
+						locationName = place.country;
 						}
-					}
-					
-					if (coordinates && coordinates.lat && coordinates.lon) {
-						const key = `${locationKey}-${coordinates.lat},${coordinates.lon}`;
-						
-						if (!agencyLocations.has(key)) {
-							agencyLocations.set(key, {
-								coordinates: coordinates,
-								locationName: locationName,
+							
+						if (coordinates && coordinates.lat && coordinates.lon) {
+							const key = `${locationKey}-${coordinates.lat},${coordinates.lon}`;
+								
+							if (!agencyLocations.has(key)) {
+								agencyLocations.set(key, {
+									coordinates: coordinates,
+									locationName: locationName,
+									agency: filterAgency,
+									events: []
+								});
+							}
+							agencyLocations.get(key).events.push({
+								year,
+								eventTitle,
 								agency: filterAgency,
-								events: []
+								...event
 							});
-						}
-						
-						agencyLocations.get(key).events.push({
-							year,
-							eventTitle,
-							agency: filterAgency,
-							...event
-						});
 					}
 				}
 			});
@@ -890,7 +1152,17 @@ function filterBy(type, value) {
 }
 
 // Initialize application
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+	// Inicializar mapa
 	initMap();
-	loadData();
+	// Inicializar autenticación
+	await initAuthButton();
+	
+	// Cargar datos
+	await loadData();
+	
+	// Inicializar editor (solo si está autenticado)
+	initEditor();
 });
+
+window.filterBy = filterBy;

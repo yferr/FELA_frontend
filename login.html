@@ -1,0 +1,213 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Login - FELA</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="./css/bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="./css/app.css">
+    <link rel="stylesheet" type="text/css" href="./css/editor.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
+</head>
+
+<body class="login-body">
+    <!-- Header con logo -->
+    <div class="login-header">
+        <div class="fila">
+            <img src="./imgs/nova.png" class="laterali">
+            <img src="./imgs/UPV.png" class="centro">
+            <img src="./imgs/CCASAT.png" class="laterald">
+        </div>
+        <h2>Sistema de Administración FELA</h2>
+    </div>
+
+    <!-- Contenedor Principal -->
+    <div class="login-container">
+        <!-- Formulario de Login (por defecto visible) -->
+        <div id="login-form-container" class="auth-card">
+            <h3 class="auth-title">🔒 Iniciar Sesión</h3>
+            
+            <!-- Alertas -->
+            <div id="login-alert" class="alert-inline" style="display: none;"></div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-username">Nombre de usuario</label>
+                    <input 
+                        type="text" 
+                        id="login-username" 
+                        name="username" 
+                        class="form-control" 
+                        placeholder="Ingresa tu usuario"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="login-password">Contraseña</label>
+                    <input 
+                        type="password" 
+                        id="login-password" 
+                        name="password" 
+                        class="form-control" 
+                        placeholder="Ingresa tu contraseña"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="remember-me" name="remember">
+                        Recordar mis datos
+                    </label>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-block" id="login-submit-btn">
+                        Iniciar Sesión
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-block" id="show-register-btn">
+                        Registrarse
+                    </button>
+                </div>
+
+                <div class="form-footer">
+                    <a href="index.html" class="back-link">← Volver a inicio</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Formulario de Registro (inicialmente oculto) -->
+        <div id="register-form-container" class="auth-card" style="display: none;">
+            <h3 class="auth-title">📝 Registrarse</h3>
+            
+            <!-- Alertas -->
+            <div id="register-alert" class="alert-inline" style="display: none;"></div>
+
+            <form id="register-form">
+                <div class="form-group">
+                    <label for="register-username">Nombre de usuario *</label>
+                    <input 
+                        type="text" 
+                        id="register-username" 
+                        name="username" 
+                        class="form-control" 
+                        placeholder="Elige un nombre de usuario"
+                        required
+                        autocomplete="username"
+                    >
+                    <small class="form-text">Solo letras, números y guiones bajos</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="register-email">Correo electrónico *</label>
+                    <input 
+                        type="email" 
+                        id="register-email" 
+                        name="email" 
+                        class="form-control" 
+                        placeholder="correo@ejemplo.com"
+                        required
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="register-firstname">Nombre *</label>
+                        <input 
+                            type="text" 
+                            id="register-firstname" 
+                            name="first_name" 
+                            class="form-control" 
+                            placeholder="Tu nombre"
+                            required
+                            autocomplete="given-name"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="register-lastname">Apellidos *</label>
+                        <input 
+                            type="text" 
+                            id="register-lastname" 
+                            name="last_name" 
+                            class="form-control" 
+                            placeholder="Tus apellidos"
+                            required
+                            autocomplete="family-name"
+                        >
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="register-organismo">Organismo</label>
+                    <input 
+                        type="text" 
+                        id="register-organismo" 
+                        name="organismo" 
+                        class="form-control" 
+                        placeholder="Tu organización o institución"
+                        autocomplete="organization"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="register-password">Contraseña *</label>
+                    <input 
+                        type="password" 
+                        id="register-password" 
+                        name="password" 
+                        class="form-control" 
+                        placeholder="Mínimo 8 caracteres"
+                        required
+                        autocomplete="new-password"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="register-password2">Confirmar contraseña *</label>
+                    <input 
+                        type="password" 
+                        id="register-password2" 
+                        name="password2" 
+                        class="form-control" 
+                        placeholder="Repite tu contraseña"
+                        required
+                        autocomplete="new-password"
+                    >
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-block" id="register-submit-btn">
+                        Confirmar Registro
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-block" id="show-login-btn">
+                        Ya tengo cuenta
+                    </button>
+                </div>
+
+                <div class="form-footer">
+                    <a href="index.html" class="back-link">← Volver a inicio</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="login-footer">
+        <p>© 2025 FELA - Universitat Politècnica de València</p>
+    </div>
+
+    <!-- Scripts -->
+    <script language="javascript" type="module" src="./js/axios.min.js"></script>
+    <script type="module" src="./js/api.js"></script>
+    <script type="module" src="./js/auth.js"></script>
+    <script type="module">
+        import { initLoginPage } from './js/auth.js';
+        document.addEventListener('DOMContentLoaded', initLoginPage);
+    </script>
+</body>
+</html>

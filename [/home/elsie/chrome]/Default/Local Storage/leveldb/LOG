@@ -1,0 +1,6 @@
+2025/11/20-22:46:56.380 5 Reusing MANIFEST /home/elsie/frontend/[/home/elsie/chrome]/Default/Local Storage/leveldb/MANIFEST-000001
+2025/11/20-22:46:56.561 5 Recovering log #3
+2025/11/20-22:46:56.582 5 Reusing old log /home/elsie/frontend/[/home/elsie/chrome]/Default/Local Storage/leveldb/000003.log 
+2025/11/20-23:04:47.524 7 Level-0 table #5: started
+2025/11/20-23:04:47.584 7 Level-0 table #5: 10337 bytes OK
+2025/11/20-23:04:47.594 7 Delete type=0 #3

@@ -311,10 +311,10 @@ export const SpeakersAPI = {
     /**
      * Listar speakers con búsqueda
      */
-    async list(search = '', country = '') {
+    async list(nameQuery = '', country = '') {
         try {
             let url = `${API_BASE_URL}/FELA/speakers/?`;
-            if (search) url += `search=${encodeURIComponent(search)}&`;
+            if (nameQuery) url += `search=${encodeURIComponent(nameQuery)}&`;
             if (country) url += `country=${encodeURIComponent(country)}`;
             
             const response = await axios.get(url, getAxiosConfig);
@@ -337,6 +337,145 @@ export const SpeakersAPI = {
             return { success: true, data: response.data };
         } catch (error) {
             return handleAPIError(error, 'Error al crear speaker');
+        }
+    }
+};
+
+/**
+ * ====================================
+ * PRESENTATIONS API
+ * ====================================
+ */
+
+export const PresentationsAPI = {
+    /**
+     * Listar presentaciones con filtros
+     */
+    async list(filters = {}) {
+        try {
+            let url = `${API_BASE_URL}/FELA/presentations/?`;
+            
+            if (filters.search) url += `search=${encodeURIComponent(filters.search)}&`;
+            if (filters.event_id) url += `event_id=${filters.event_id}&`;
+            if (filters.event_title) url += `event_title=${encodeURIComponent(filters.event_title)}&`;
+            if (filters.speaker_id) url += `speaker_id=${filters.speaker_id}&`;
+            if (filters.language) url += `language=${encodeURIComponent(filters.language)}&`;
+            
+            const response = await axios.get(url, getAxiosConfig());
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleAPIError(error, 'Error al listar presentaciones');
+        }
+    },
+
+    /**
+     * Buscar presentaciones con filtros complejos
+     */
+    async search(query) {
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/FELA/presentations/search/?title=${encodeURIComponent(query)}`,
+                getAxiosConfig()
+            );
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleAPIError(error, 'Error al buscar presentaciones');
+        }
+    },
+
+    /**
+     * Obtener presentación por ID
+     */
+    async get(presentationId) {
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/FELA/presentations/${presentationId}/`,
+                getAxiosConfig()
+            );
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleAPIError(error, 'Error al obtener presentación');
+        }
+    },
+
+    /**
+     * Crear presentación
+     */
+    async create(presentationData) {
+        try {
+            const response = await axios.post(
+                `${API_BASE_URL}/FELA/presentations/`,
+                presentationData,
+                getAxiosConfig()
+            );
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleAPIError(error, 'Error al crear presentación');
+        }
+    },
+
+    /**
+     * Actualizar presentación
+     */
+    async update(presentationId, presentationData) {
+        try {
+            const response = await axios.put(
+                `${API_BASE_URL}/FELA/presentations/${presentationId}/`,
+                presentationData,
+                getAxiosConfig()
+            );
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleAPIError(error, 'Error al actualizar presentación');
+        }
+    },
+
+    /**
+     * Eliminar presentación
+     */
+    async delete(presentationId) {
+        try {
+            await axios.delete(
+                `${API_BASE_URL}/FELA/presentations/${presentationId}/`,
+                getAxiosConfig()
+            );
+            return { success: true };
+        } catch (error) {
+            return handleAPIError(error, 'Error al eliminar presentación');
+        }
+    },
+
+    /**
+     * Agregar speaker a presentación
+     */
+    async addSpeaker(presentationId, speakerId) {
+        try {
+            const response = await axios.post(
+                `${API_BASE_URL}/FELA/presentation-speakers/`,
+                {
+                    presentation_id: presentationId,
+                    speaker_id: speakerId
+                },
+                getAxiosConfig()
+            );
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleAPIError(error, 'Error al agregar ponente a presentación');
+        }
+    },
+
+    /**
+     * Eliminar speaker de presentación
+     */
+    async removeSpeaker(presentationId, speakerId) {
+        try {
+            await axios.delete(
+                `${API_BASE_URL}/FELA/presentation-speakers/${presentationId}-${speakerId}/`,
+                getAxiosConfig()
+            );
+            return { success: true };
+        } catch (error) {
+            return handleAPIError(error, 'Error al eliminar ponente de presentación');
         }
     }
 };
@@ -381,7 +520,20 @@ export const EventsAPI = {
             return handleAPIError(error, 'Error al obtener evento');
         }
     },
-
+    /**
+     * Obtener evento con todos los detalles
+     */
+    async  getWithDetails (eventId) {
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/FELA/events/${eventId}/`,
+                getAxiosConfig()
+            );
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleAPIError(error, 'Error al obtener evento con detalles');
+        }
+    },
     /**
      * Crear evento completo (con presentaciones y speakers)
      */
@@ -429,6 +581,8 @@ export const EventsAPI = {
         }
     }
 };
+
+
 
 /**
  * ====================================

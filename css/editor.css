@@ -1141,3 +1141,389 @@
         padding: 25px;
     }
 }
+
+/**
+ * AGREGAR AL editor.css EXISTENTE
+ * Estilos para el sistema de pestañas
+ */
+
+/* ====================================
+   PESTAÑAS DEL EDITOR
+   ==================================== */
+
+.editor-tabs {
+    display: flex;
+    gap: 5px;
+    border-bottom: 2px solid #e0e0e0;
+    margin-bottom: 20px;
+    background: #f8f9fa;
+    padding: 5px 5px 0 5px;
+    border-radius: 8px 8px 0 0;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    padding: 12px 20px;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #666;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+    border-radius: 8px 8px 0 0;
+    font-weight: 500;
+}
+
+.tab-btn:hover {
+    color: #080668;
+    background: #f0f0ff;
+}
+
+.tab-btn.active {
+    color: #080668;
+    background: white;
+    border-bottom-color: #080668;
+    font-weight: 600;
+}
+
+.tab-content {
+    background: white;
+    padding: 20px;
+    border-radius: 0 0 8px 8px;
+}
+
+.tab-pane {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ====================================
+   OPCIONES DE AGREGAR
+   ==================================== */
+
+.add-options {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.add-option-btn {
+    background: white;
+    border: 2px solid #080668;
+    padding: 25px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    text-align: left;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    position: relative;
+}
+
+.add-option-btn:hover {
+    background: #f0f0ff;
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(8, 6, 104, 0.15);
+    border-color: #0a0880;
+}
+
+.add-option-btn:active {
+    transform: translateX(3px);
+}
+
+.add-option-btn small {
+    display: block;
+    margin-top: 8px;
+    color: #666;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+/* ====================================
+   BOTONES DE ACCIÓN EN POPUPS
+   ==================================== */
+
+.action-buttons-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid #e0e0e0;
+}
+
+.action-buttons-container .btn {
+    flex: 1;
+    padding: 10px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.action-buttons-container .btn-primary {
+    background: #080668;
+    color: white;
+    border: none;
+}
+
+.action-buttons-container .btn-primary:hover {
+    background: #0a0880;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(8, 6, 104, 0.2);
+}
+
+.action-buttons-container .btn-outline-secondary {
+    background: white;
+    color: #080668;
+    border: 2px solid #080668;
+}
+
+.action-buttons-container .btn-outline-secondary:hover {
+    background: #f0f0f0;
+}
+
+/* ====================================
+   RESPONSIVE
+   ==================================== */
+
+@media (max-width: 768px) {
+    .editor-tabs {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .tab-btn {
+        border-bottom: none;
+        border-left: 3px solid transparent;
+        border-radius: 0;
+    }
+
+    .tab-btn.active {
+        border-bottom: none;
+        border-left-color: #080668;
+    }
+
+    .add-options {
+        padding: 10px;
+    }
+
+    .add-option-btn {
+        padding: 20px;
+        font-size: 1rem;
+    }
+
+    .action-buttons-container {
+        flex-direction: column;
+    }
+}
+
+/**
+ * AGREGAR AL editor.css EXISTENTE
+ * Estilos para el sistema de pestañas
+ */
+
+/* ====================================
+   PESTAÑAS DEL EDITOR
+   ==================================== */
+
+.editor-tabs {
+    display: flex;
+    gap: 5px;
+    border-bottom: 2px solid #e0e0e0;
+    margin-bottom: 20px;
+    background: #f8f9fa;
+    padding: 5px 5px 0 5px;
+    border-radius: 8px 8px 0 0;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    padding: 12px 20px;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #666;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+    border-radius: 8px 8px 0 0;
+    font-weight: 500;
+}
+
+.tab-btn:hover {
+    color: #080668;
+    background: #f0f0ff;
+}
+
+.tab-btn.active {
+    color: #080668;
+    background: white;
+    border-bottom-color: #080668;
+    font-weight: 600;
+}
+
+.tab-content {
+    background: white;
+    padding: 20px;
+    border-radius: 0 0 8px 8px;
+}
+
+.tab-pane {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ====================================
+   OPCIONES DE AGREGAR
+   ==================================== */
+
+.add-options {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.add-option-btn {
+    background: white;
+    border: 2px solid #080668;
+    padding: 25px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    text-align: left;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    position: relative;
+}
+
+.add-option-btn:hover {
+    background: #f0f0ff;
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(8, 6, 104, 0.15);
+    border-color: #0a0880;
+}
+
+.add-option-btn:active {
+    transform: translateX(3px);
+}
+
+.add-option-btn small {
+    display: block;
+    margin-top: 8px;
+    color: #666;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+/* ====================================
+   BOTONES DE ACCIÓN EN POPUPS
+   ==================================== */
+
+.action-buttons-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid #e0e0e0;
+}
+
+.action-buttons-container .btn {
+    flex: 1;
+    padding: 10px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.action-buttons-container .btn-primary {
+    background: #080668;
+    color: white;
+    border: none;
+}
+
+.action-buttons-container .btn-primary:hover {
+    background: #0a0880;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(8, 6, 104, 0.2);
+}
+
+.action-buttons-container .btn-outline-secondary {
+    background: white;
+    color: #080668;
+    border: 2px solid #080668;
+}
+
+.action-buttons-container .btn-outline-secondary:hover {
+    background: #f0f0f0;
+}
+
+/* ====================================
+   RESPONSIVE
+   ==================================== */
+
+@media (max-width: 768px) {
+    .editor-tabs {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .tab-btn {
+        border-bottom: none;
+        border-left: 3px solid transparent;
+        border-radius: 0;
+    }
+
+    .tab-btn.active {
+        border-bottom: none;
+        border-left-color: #080668;
+    }
+
+    .add-options {
+        padding: 10px;
+    }
+
+    .add-option-btn {
+        padding: 20px;
+        font-size: 1rem;
+    }
+
+    .action-buttons-container {
+        flex-direction: column;
+    }
+}

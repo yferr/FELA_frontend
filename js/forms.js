@@ -2,7 +2,7 @@
  * Forms Module - Generación y manejo de formularios de edición
  */
 
-import { EventsAPI } from './api.js';
+import { EventsAPI,PresentationsAPI, SpeakersAPI } from './api.js';
 import { Autocomplete } from './autocomplete.js';
 import { canEdit } from './auth.js';
 
@@ -336,6 +336,736 @@ function generateSpeakerRowHTML(presentationIndex, speakerIndex) {
             </button>
         </div>
     `;
+}
+
+/**
+ * ====================================
+ * AGREGAR PRESENTACIÓN A EVENTO
+ * ====================================
+ */
+
+export function initAddPresentationForm(container, prefilledEvent = null) {
+    // Estado del formulario
+    let selectedEvent = prefilledEvent;
+    let formState = {
+        languages: [],
+        speakers: [{ name: '', country: null, agency: '' }]
+    };
+    let autocompleteInstances = [];
+
+    // Generar HTML
+    container.innerHTML = `
+        <form id="add-presentation-form" class="event-form">
+            <!-- Botón volver -->
+            <button type="button" class="btn btn-outline-secondary" id="back-to-add-options" style="margin-bottom: 20px;">
+                ← Volver a opciones
+            </button>
+
+            <!-- Sección: Seleccionar Evento -->
+            <div class="form-section">
+                <h4 class="form-section-title">📅 Seleccionar Evento</h4>
+                
+                <div class="form-group">
+                    <label for="add-pres-event">Evento *</label>
+                    <input 
+                        type="text" 
+                        id="add-pres-event" 
+                        class="form-control autocomplete-input"
+                        placeholder="Busca el evento..."
+                        ${prefilledEvent ? 'disabled' : ''}
+                        required
+                    >
+                    ${prefilledEvent ? `<input type="hidden" id="add-pres-event-id" value="${prefilledEvent.id}">` : ''}
+                    <small class="form-text">
+                        ${prefilledEvent ? '✓ Evento prellenado desde el mapa' : 'Escribe para buscar eventos existentes'}
+                    </small>
+                </div>
+            </div>
+
+            <!-- Sección: Datos de la Presentación -->
+            <div class="form-section">
+                <h4 class="form-section-title">📋 Datos de la Presentación</h4>
+                
+                <div class="form-grid">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label for="add-pres-title">Título de la presentación *</label>
+                        <input 
+                            type="text" 
+                            id="add-pres-title" 
+                            class="form-control"
+                            placeholder="Título de la charla o ponencia"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label>Idiomas</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input 
+                                type="text" 
+                                id="add-pres-language-input" 
+                                class="form-control"
+                                placeholder="ej: Español, English"
+                            >
+                            <button type="button" id="add-pres-language-btn" class="btn btn-outline-secondary">
+                                ➕
+                            </button>
+                        </div>
+                        <div id="add-pres-languages-chips" class="chips-container"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>URL del documento</label>
+                        <input 
+                            type="url" 
+                            id="add-pres-url" 
+                            class="form-control"
+                            placeholder="https://..."
+                        >
+                    </div>
+
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Observaciones</label>
+                        <textarea 
+                            id="add-pres-observations" 
+                            class="form-control"
+                            rows="2"
+                            placeholder="Notas adicionales"
+                        ></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Ponentes -->
+            <div class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h4 class="form-section-title" style="margin: 0;">👥 Ponentes</h4>
+                    <button type="button" id="add-pres-add-speaker-btn" class="btn btn-outline-secondary">
+                        ➕ Agregar Ponente
+                    </button>
+                </div>
+                <div id="add-pres-speakers-list" class="speakers-list">
+                    <!-- Speakers dinámicos -->
+                </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="form-buttons">
+                <button type="button" id="add-pres-cancel-btn" class="btn-cancel">
+                    ❌ Cancelar
+                </button>
+                <button type="submit" id="add-pres-submit-btn" class="btn-save">
+                    💾 Guardar Presentación
+                </button>
+            </div>
+
+            <!-- Alert -->
+            <div id="add-pres-alert" class="alert-inline" style="display: none; margin-top: 20px;"></div>
+        </form>
+    `;
+
+    // Inicializar autocompletado de evento (si no viene prellenado)
+    if (!prefilledEvent) {
+        const eventAutocomplete = new Autocomplete(document.getElementById('add-pres-event'), {
+            type: 'text',
+            minChars: 2,
+            searchLocal: false,
+            onSelect: handleEventSelect
+        });
+
+        // Custom search para eventos
+        const originalHandleInput = eventAutocomplete.handleInput.bind(eventAutocomplete);
+        eventAutocomplete.handleInput = async function(e) {
+            const query = e.target.value.trim();
+            if (query.length < 2) {
+                this.hideResults();
+                return;
+            }
+
+            this.isLoading = true;
+            this.showLoading();
+
+            const result = await EventsAPI.list({ search: query });
+            const events = result.success ? (result.data.results || result.data || []) : [];
+
+            this.results = events.map(event => ({
+                type: 'local',
+                data: event,
+                display: `${event.event_title} (${event.year || 'N/A'}) - ${event.country_e || 'N/A'}`
+            }));
+
+            this.isLoading = false;
+            this.renderResults();
+        };
+
+        autocompleteInstances.push(eventAutocomplete);
+    } else {
+        // Prellenar el campo
+        document.getElementById('add-pres-event').value = prefilledEvent.title;
+    }
+
+    // Renderizar primer ponente
+    renderSpeakers();
+
+    // Event listeners
+    attachAddPresentationListeners();
+
+    // Funciones internas
+    function handleEventSelect(data, type) {
+        selectedEvent = {
+            id: data.id,
+            title: data.event_title
+        };
+        document.getElementById('add-pres-event').value = data.event_title;
+    }
+
+    function renderSpeakers() {
+        const container = document.getElementById('add-pres-speakers-list');
+        container.innerHTML = '';
+
+        formState.speakers.forEach((speaker, index) => {
+            const speakerRow = document.createElement('div');
+            speakerRow.className = 'speaker-row';
+            speakerRow.innerHTML = `
+                <div class="form-group">
+                    <input 
+                        type="text" 
+                        class="form-control speaker-name"
+                        data-index="${index}"
+                        placeholder="Nombre del ponente *"
+                        value="${speaker.name}"
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <input 
+                        type="text" 
+                        class="form-control speaker-country autocomplete-input"
+                        data-index="${index}"
+                        placeholder="País *"
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <input 
+                        type="text" 
+                        class="form-control speaker-agency autocomplete-input"
+                        data-index="${index}"
+                        placeholder="Organismo"
+                    >
+                </div>
+                <button type="button" class="remove-speaker" data-index="${index}">
+                    🗑️
+                </button>
+            `;
+            container.appendChild(speakerRow);
+
+            // Inicializar autocompletados
+            const countryInput = speakerRow.querySelector('.speaker-country');
+            const agencyInput = speakerRow.querySelector('.speaker-agency');
+
+            const countryAC = new Autocomplete(countryInput, {
+                type: 'country',
+                searchLocal: true,
+                searchNominatim: true,
+                allowCreate: true
+            });
+            autocompleteInstances.push(countryAC);
+
+            const agencyAC = new Autocomplete(agencyInput, {
+                type: 'agency',
+                searchLocal: true,
+                allowCreate: true
+            });
+            autocompleteInstances.push(agencyAC);
+        });
+    }
+
+    function attachAddPresentationListeners() {
+        const form = document.getElementById('add-presentation-form');
+
+        // Volver
+        document.getElementById('back-to-add-options')?.addEventListener('click', () => {
+            initAddOptionsView(container);
+        });
+
+        // Agregar idioma
+        document.getElementById('add-pres-language-btn').addEventListener('click', () => {
+            const input = document.getElementById('add-pres-language-input');
+            const value = input.value.trim();
+            if (value) {
+                addLanguageChip(value);
+                input.value = '';
+            }
+        });
+
+        document.getElementById('add-pres-language-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('add-pres-language-btn').click();
+            }
+        });
+
+        // Agregar ponente
+        document.getElementById('add-pres-add-speaker-btn').addEventListener('click', () => {
+            formState.speakers.push({ name: '', country: null, agency: '' });
+            renderSpeakers();
+        });
+
+        // Delegación: eliminar ponente
+        document.getElementById('add-pres-speakers-list').addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-speaker')) {
+                const index = parseInt(e.target.dataset.index);
+                if (formState.speakers.length === 1) {
+                    showAlert('Debe haber al menos un ponente', 'warning');
+                    return;
+                }
+                formState.speakers.splice(index, 1);
+                renderSpeakers();
+            }
+        });
+
+        // Cancelar
+        document.getElementById('add-pres-cancel-btn').addEventListener('click', () => {
+            if (confirm('¿Seguro que deseas cancelar? Se perderán los cambios.')) {
+                initAddOptionsView(container);
+            }
+        });
+
+        // Submit
+        form.addEventListener('submit', handleAddPresentationSubmit);
+    }
+
+    function addLanguageChip(language) {
+        if (formState.languages.includes(language)) {
+            return;
+        }
+
+        formState.languages.push(language);
+
+        const container = document.getElementById('add-pres-languages-chips');
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.innerHTML = `
+            ${language}
+            <button type="button" class="chip-remove" data-language="${language}">×</button>
+        `;
+        container.appendChild(chip);
+
+        chip.querySelector('.chip-remove').addEventListener('click', (e) => {
+            const lang = e.target.dataset.language;
+            formState.languages = formState.languages.filter(l => l !== lang);
+            chip.remove();
+        });
+    }
+
+    async function handleAddPresentationSubmit(e) {
+        e.preventDefault();
+
+        const submitBtn = document.getElementById('add-pres-submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="loading-spinner"></span> Guardando...';
+
+        try {
+            // 1. Validar evento seleccionado
+            if (!selectedEvent || !selectedEvent.id) {
+                showAlert('❌ Debes seleccionar un evento', 'error');
+                return;
+            }
+
+            // 2. Recopilar datos
+            const title = document.getElementById('add-pres-title').value.trim();
+            const url = document.getElementById('add-pres-url').value.trim();
+            const observations = document.getElementById('add-pres-observations').value.trim();
+
+            // 3. Validar título duplicado
+            const existingPres = await PresentationsAPI.list({ event_id: selectedEvent.id });
+            if (existingPres.success) {
+                const presentations = existingPres.data.results || existingPres.data || [];
+                const duplicate = presentations.find(p => 
+                    p.title.toLowerCase() === title.toLowerCase()
+                );
+                if (duplicate) {
+                    showAlert(`❌ Ya existe una presentación con el título "${title}" en el evento "${selectedEvent.title}". Por favor usa un título diferente.`, 'error');
+                    return;
+                }
+            }
+
+            // 4. Recopilar speakers
+            const speakers = [];
+            const speakerRows = document.querySelectorAll('.speaker-row');
+            for (let row of speakerRows) {
+                const name = row.querySelector('.speaker-name').value.trim();
+                const country = row.querySelector('.speaker-country').value.trim();
+                const agency = row.querySelector('.speaker-agency').value.trim();
+
+                if (!name || !country) {
+                    showAlert('❌ Todos los ponentes deben tener nombre y país', 'error');
+                    return;
+                }
+
+                speakers.push({ name, country, agency });
+            }
+
+            // 5. Crear presentación
+            const presResult = await PresentationsAPI.create({
+                title: title,
+                event_title: selectedEvent.title,
+                language: formState.languages,
+                url_document: url,
+                observations: observations
+            });
+
+            if (!presResult.success) {
+                showAlert('❌ Error al crear presentación: ' + presResult.error, 'error');
+                return;
+            }
+
+            const presentationId = presResult.data.id;
+
+            // 6. Crear/asociar speakers
+            for (let speakerData of speakers) {
+                // Buscar speaker existente
+                const existingSpeaker = await SpeakersAPI.list(speakerData.name, speakerData.country);
+                let speaker;
+
+                if (existingSpeaker.success && existingSpeaker.data.results && existingSpeaker.data.results.length > 0) {
+                    speaker = existingSpeaker.data.results[0];
+                } else {
+                    // Crear nuevo
+                    const newSpeaker = await SpeakersAPI.create({
+                        name: speakerData.name,
+                        country_s: speakerData.country,
+                        agency_s: speakerData.agency
+                    });
+
+                    if (!newSpeaker.success) {
+                        console.error('Error al crear speaker:', newSpeaker.error);
+                        continue;
+                    }
+                    speaker = newSpeaker.data;
+                }
+
+                // Asociar speaker con presentación
+                await PresentationsAPI.addSpeaker(presentationId, speaker.id);
+            }
+
+            // 7. Éxito
+            showAlert('✅ Presentación agregada exitosamente', 'success');
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('❌ Error inesperado: ' + error.message, 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '💾 Guardar Presentación';
+        }
+    }
+
+    function showAlert(message, type = 'info') {
+        const alertDiv = document.getElementById('add-pres-alert');
+        alertDiv.className = `alert-inline ${type}`;
+        alertDiv.textContent = message;
+        alertDiv.style.display = 'block';
+
+        if (type === 'success') {
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 5000);
+        }
+    }
+}
+
+/**
+ * ====================================
+ * AGREGAR PONENTE A PRESENTACIÓN
+ * ====================================
+ */
+
+export function initAddSpeakerForm(container, prefilledPresentation = null) {
+    let selectedPresentation = prefilledPresentation;
+    let autocompleteInstances = [];
+
+    container.innerHTML = `
+        <form id="add-speaker-form" class="event-form">
+            <!-- Botón volver -->
+            <button type="button" class="btn btn-outline-secondary" id="back-to-add-options-2" style="margin-bottom: 20px;">
+                ← Volver a opciones
+            </button>
+
+            <!-- Sección: Seleccionar Presentación -->
+            <div class="form-section">
+                <h4 class="form-section-title">📋 Seleccionar Presentación</h4>
+                
+                <div class="form-group">
+                    <label for="add-speaker-pres">Presentación *</label>
+                    <input 
+                        type="text" 
+                        id="add-speaker-pres" 
+                        class="form-control autocomplete-input"
+                        placeholder="Busca la presentación..."
+                        ${prefilledPresentation ? 'disabled' : ''}
+                        required
+                    >
+                    ${prefilledPresentation ? `<input type="hidden" id="add-speaker-pres-id" value="${prefilledPresentation.id}">` : ''}
+                    <small class="form-text">
+                        ${prefilledPresentation ? '✓ Presentación prellenada' : 'Escribe para buscar presentaciones existentes'}
+                    </small>
+                </div>
+            </div>
+
+            <!-- Sección: Datos del Ponente -->
+            <div class="form-section">
+                <h4 class="form-section-title">👤 Datos del Ponente</h4>
+                
+                <div class="form-grid">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label for="add-speaker-name">Nombre del ponente *</label>
+                        <input 
+                            type="text" 
+                            id="add-speaker-name" 
+                            class="form-control"
+                            placeholder="Nombre completo"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="add-speaker-country">País *</label>
+                        <input 
+                            type="text" 
+                            id="add-speaker-country" 
+                            class="form-control autocomplete-input"
+                            placeholder="País del ponente"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="add-speaker-agency">Organismo</label>
+                        <input 
+                            type="text" 
+                            id="add-speaker-agency" 
+                            class="form-control autocomplete-input"
+                            placeholder="Institución u organización"
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="form-buttons">
+                <button type="button" id="add-speaker-cancel-btn" class="btn-cancel">
+                    ❌ Cancelar
+                </button>
+                <button type="submit" id="add-speaker-submit-btn" class="btn-save">
+                    💾 Agregar Ponente
+                </button>
+            </div>
+
+            <!-- Alert -->
+            <div id="add-speaker-alert" class="alert-inline" style="display: none; margin-top: 20px;"></div>
+        </form>
+    `;
+
+    // Inicializar autocompletado de presentación (si no viene prellenado)
+    if (!prefilledPresentation) {
+        const presAutocomplete = new Autocomplete(document.getElementById('add-speaker-pres'), {
+            type: 'text',
+            minChars: 2,
+            searchLocal: false,
+            onSelect: handlePresentationSelect
+        });
+
+        const originalHandleInput = presAutocomplete.handleInput.bind(presAutocomplete);
+        presAutocomplete.handleInput = async function(e) {
+            const query = e.target.value.trim();
+            if (query.length < 2) {
+                this.hideResults();
+                return;
+            }
+
+            this.isLoading = true;
+            this.showLoading();
+
+            const result = await PresentationsAPI.search(query);
+            const presentations = result.success ? (result.data || []) : [];
+
+            this.results = presentations.map(pres => {
+                const speakersNames = pres.speakers ? pres.speakers.map(s => s.name).join(', ') : 'Sin ponentes';
+                return {
+                    type: 'local',
+                    data: pres,
+                    display: `📋 ${pres.title} | Evento: ${pres.event_title} (${pres.event_country}) | Ponentes: ${speakersNames}`
+                };
+            });
+
+            this.isLoading = false;
+            this.renderResults();
+        };
+
+        autocompleteInstances.push(presAutocomplete);
+    } else {
+        document.getElementById('add-speaker-pres').value = prefilledPresentation.title;
+    }
+
+    // Autocompletados de país y agencia
+    const countryAC = new Autocomplete(document.getElementById('add-speaker-country'), {
+        type: 'country',
+        searchLocal: true,
+        searchNominatim: true,
+        allowCreate: true
+    });
+    autocompleteInstances.push(countryAC);
+
+    const agencyAC = new Autocomplete(document.getElementById('add-speaker-agency'), {
+        type: 'agency',
+        searchLocal: true,
+        allowCreate: true
+    });
+    autocompleteInstances.push(agencyAC);
+
+    // Event listeners
+    attachAddSpeakerListeners();
+
+    function handlePresentationSelect(data, type) {
+        selectedPresentation = {
+            id: data.id,
+            title: data.title
+        };
+        document.getElementById('add-speaker-pres').value = data.title;
+    }
+
+    function attachAddSpeakerListeners() {
+        const form = document.getElementById('add-speaker-form');
+
+        document.getElementById('back-to-add-options-2')?.addEventListener('click', () => {
+            initAddOptionsView(container);
+        });
+
+        document.getElementById('add-speaker-cancel-btn').addEventListener('click', () => {
+            if (confirm('¿Seguro que deseas cancelar?')) {
+                initAddOptionsView(container);
+            }
+        });
+
+        form.addEventListener('submit', handleAddSpeakerSubmit);
+    }
+
+    async function handleAddSpeakerSubmit(e) {
+        e.preventDefault();
+
+        const submitBtn = document.getElementById('add-speaker-submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="loading-spinner"></span> Guardando...';
+
+        try {
+            if (!selectedPresentation || !selectedPresentation.id) {
+                showAlert('❌ Debes seleccionar una presentación', 'error');
+                return;
+            }
+
+            const name = document.getElementById('add-speaker-name').value.trim();
+            const country = document.getElementById('add-speaker-country').value.trim();
+            const agency = document.getElementById('add-speaker-agency').value.trim();
+
+            if (!name || !country) {
+                showAlert('❌ El nombre y el país son obligatorios', 'error');
+                return;
+            }
+
+            // Buscar speaker existente
+            const existingSpeaker = await SpeakersAPI.list(name, country);
+            let speaker;
+
+            if (existingSpeaker.success && existingSpeaker.data.results && existingSpeaker.data.results.length > 0) {
+                speaker = existingSpeaker.data.results[0];
+            } else {
+                const newSpeaker = await SpeakersAPI.create({
+                    name: name,
+                    country_s: country,
+                    agency_s: agency
+                });
+
+                if (!newSpeaker.success) {
+                    showAlert('❌ Error al crear ponente: ' + newSpeaker.error, 'error');
+                    return;
+                }
+                speaker = newSpeaker.data;
+            }
+
+            // Asociar speaker con presentación
+            const assocResult = await PresentationsAPI.addSpeaker(selectedPresentation.id, speaker.id);
+
+            if (!assocResult.success) {
+                showAlert('❌ Error al asociar ponente: ' + assocResult.error, 'error');
+                return;
+            }
+
+            showAlert('✅ Ponente agregado exitosamente', 'success');
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('❌ Error inesperado: ' + error.message, 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '💾 Agregar Ponente';
+        }
+    }
+
+    function showAlert(message, type = 'info') {
+        const alertDiv = document.getElementById('add-speaker-alert');
+        alertDiv.className = `alert-inline ${type}`;
+        alertDiv.textContent = message;
+        alertDiv.style.display = 'block';
+
+        if (type === 'success') {
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 5000);
+        }
+    }
+}
+
+/**
+ * Vista de opciones de agregar
+ */
+function initAddOptionsView(container) {
+    container.innerHTML = `
+        <div class="add-options">
+            <button class="add-option-btn" data-action="add-presentation">
+                📋 Agregar Presentación a Evento Existente
+                <small style="display: block; margin-top: 8px; color: #666; font-size: 0.9rem;">
+                    Añade una nueva presentación con sus ponentes a un evento ya creado
+                </small>
+            </button>
+            <button class="add-option-btn" data-action="add-speaker">
+                👤 Agregar Ponente a Presentación Existente
+                <small style="display: block; margin-top: 8px; color: #666; font-size: 0.9rem;">
+                    Añade un nuevo ponente a una presentación existente
+                </small>
+            </button>
+        </div>
+    `;
+
+    document.querySelectorAll('.add-option-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const action = e.currentTarget.dataset.action;
+            if (action === 'add-presentation') {
+                initAddPresentationForm(container);
+            } else if (action === 'add-speaker') {
+                initAddSpeakerForm(container);
+            }
+        });
+    });
 }
 
 /**
@@ -674,6 +1404,8 @@ function updateCoordsDisplay(type, lat, lon) {
         coordsDiv.style.display = 'none';
     }
 }
+
+
 
 /**
  * ====================================

@@ -49,22 +49,7 @@ document.querySelectorAll('.menu-item').forEach(button => {
   });
 });
 
-/* Initialize the map
-function initMap() {
-	map = L.map('map').setView([40.0, 0.0], 3);
-	
-	// Add base layer
-	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-		attribution: '© OpenStreetMap contributors'
-	}).addTo(map);
-	
-	// Initialize marker layers
-	eventsLayer = L.layerGroup().addTo(map);
-	speakersLayer = L.layerGroup();
-	languagesLayer = L.layerGroup();
-	agenciesLayer = L.layerGroup();
-}
-*/
+
 //Initialize the map
 function initMap() {
 	// Crear mapa y asignarlo a variable global
@@ -550,68 +535,136 @@ function addEventMarker(location, layer) {
 		permanent: false,
 		direction: 'top'
 	});
+	 // Adjuntar listeners cuando se abre el popup
+    marker.on('popupopen', (e) => {
+        const popupElement = e.popup.getElement();
+        // Pasar TODOS los eventos, no solo el primero
+        attachPopupButtonListeners(popupElement, events);
+    });
 }
 
 // Function to create popup content
 function createPopupContent(locationName, events) {
-	let content = `<div class="popup-container">`;
-	
-	events.forEach((event, index) => {
-		const agency = Array.isArray(event.agency) ? event.agency.join(', ') : event.agency;
-		const place = event.place && event.place.length > 0 ? event.place[0] : {};
-		
-		content += `
-			<div class="event-header">
-				<div class="event-title">${event.eventTitle}</div>
-				<div class="event-meta">
-					<span>🏛️ ${agency}</span>
-					<span>📅 ${event.date}</span>
-					<span>🏢 ${event.type}</span>
-					<span>🌍 ${place.country || 'N/A'}</span>
-					<span>🏙️ ${place.city || 'N/A'}</span>
-				</div>
-			</div>
-			
-			<div class="presentations-section">
-				<div class="presentations-title">📋 Presentaciones (${Object.keys(event.titles).length})</div>
-		`;
-		
-		Object.keys(event.titles).forEach(titleKey => {
-			event.titles[titleKey].forEach(presentation => {
-				const language = Array.isArray(presentation.language) ? presentation.language.join(', ') : presentation.language;
-				
-				content += `
-					<div class="presentation-item">
-						<div class="presentation-title">${titleKey}</div>
-						
-						<div class="speakers-list">
-							${presentation.speakers.map(speaker => `
-								<div class="speaker-item">
-									<div class="speaker-name">👤 ${speaker.speaker}</div>
-									<div class="speaker-details">${speaker.country_s}${speaker.agency_s ? ` - ${speaker.agency_s}` : ''}</div>
-								</div>
-							`).join('')}
-						</div>
-						
-						<div class="presentation-meta">
-							<div>🌐 Idioma: ${language}</div>
-							${presentation.URL_document ? `<div>🔗 <a href="${presentation.URL_document}" target="_blank" class="url-link">Ver documento</a></div>` : ''}
-							${presentation.observations ? `<div>📝 ${presentation.observations}</div>` : ''}
-						</div>
-					</div>
-				`;
-			});
-		});
-		
-		content += `</div>`;
-		
-		if (index < events.length - 1) {
-			content += `<hr style="margin: 20px 0; border: 1px solid #eee;">`;
-		}
-	});
-	
-	content += `</div>`;
-	return content;
+    let content = `<div class="popup-container">`;
+    
+    events.forEach((event, index) => {
+        const agency = Array.isArray(event.agency) ? event.agency.join(', ') : event.agency;
+        const place = event.place && event.place.length > 0 ? event.place[0] : {};
+        
+        // ✅ Generar un ID único para cada evento
+        const eventUniqueId = `event-${event.year}-${index}-${Date.now()}`;
+        
+        content += `
+            <div class="event-header">
+                <div class="event-title">${event.eventTitle}</div>
+                <div class="event-meta">
+                    <span>🏛️ ${agency}</span>
+                    <span>📅 ${event.date}</span>
+                    <span>🏢 ${event.type}</span>
+                    <span>🌍 ${place.country || 'N/A'}</span>
+                    <span>🏙️ ${place.city || 'N/A'}</span>
+                </div>
+            </div>
+            
+            <div class="presentations-section">
+                <div class="presentations-title">📋 Presentaciones (${Object.keys(event.titles).length})</div>
+                
+                <!-- ✅ BOTONES DE ACCIÓN AQUÍ (justo después del título) -->
+                <div class="action-buttons-container" style="margin-bottom: 15px;">
+                    <button class="btn btn-primary add-presentation-btn" 
+                            data-event-id="${eventUniqueId}"
+                            data-event-title="${event.eventTitle.replace(/"/g, '&quot;')}"
+                            style="flex: 1;">
+                        ➕ Nueva Presentación
+                    </button>
+                    <button class="btn btn-outline-secondary edit-event-btn" 
+                            data-event-id="${eventUniqueId}"
+                            data-event-title="${event.eventTitle.replace(/"/g, '&quot;')}"
+                            style="flex: 1;">
+                        ✏️ Editar Evento
+                    </button>
+                </div>
+        `;
+        
+        Object.keys(event.titles).forEach(titleKey => {
+            event.titles[titleKey].forEach(presentation => {
+                const language = Array.isArray(presentation.language) 
+                    ? presentation.language.join(', ') 
+                    : presentation.language;
+                
+                content += `
+                    <div class="presentation-item">
+                        <div class="presentation-title">${titleKey}</div>
+                        
+                        <div class="speakers-list">
+                            ${presentation.speakers.map(speaker => `
+                                <div class="speaker-item">
+                                    <div class="speaker-name">👤 ${speaker.speaker}</div>
+                                    <div class="speaker-details">${speaker.country_s}${speaker.agency_s ? ` - ${speaker.agency_s}` : ''}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="presentation-meta">
+                            <div>🌐 Idioma: ${language}</div>
+                            ${presentation.URL_document ? `<div>🔗 <a href="${presentation.URL_document}" target="_blank" class="url-link">Ver documento</a></div>` : ''}
+                            ${presentation.observations ? `<div>📝 ${presentation.observations}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+        });
+        
+        content += `</div>`; // Cierra presentations-section
+        
+        // Separador entre eventos (si hay más de uno)
+        if (index < events.length - 1) {
+            content += `<hr style="margin: 20px 0; border: 1px solid #eee;">`;
+        }
+    });
+    
+    content += `</div>`; // Cierra popup-container
+    return content;
+}
+
+/**
+ * IMPORTANTE: Agregar esta función DESPUÉS de createPopupContent
+ * Adjunta event listeners a los botones del popup
+ */
+function attachPopupButtonListeners(popupElement, eventsData) {
+    if (!popupElement) return;
+    
+    // Buscar todos los botones en el popup
+    const addPresentationBtns = popupElement.querySelectorAll('.add-presentation-btn');
+    const editEventBtns = popupElement.querySelectorAll('.edit-event-btn');
+    
+    // Adjuntar listeners a cada botón de agregar presentación
+    addPresentationBtns.forEach((btn, index) => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const eventTitle = btn.dataset.eventTitle;
+            const eventData = eventsData[index]; // Obtener el evento correspondiente
+            
+            // Llamar a la función global de editor.js
+            if (window.handleAddPresentationFromMapGlobal) {
+                window.handleAddPresentationFromMapGlobal(eventData, eventTitle);
+            }
+        });
+    });
+    
+    // Adjuntar listeners a cada botón de editar
+    editEventBtns.forEach((btn, index) => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const eventTitle = btn.dataset.eventTitle;
+            const eventData = eventsData[index];
+            
+            // Llamar a la función global de editor.js para editar
+            if (window.handleEditEventFromMapGlobal) {
+                window.handleEditEventFromMapGlobal(eventData, eventTitle);
+            }
+        });
+    });
 }
 
 //SPEAKERS

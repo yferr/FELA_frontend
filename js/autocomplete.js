@@ -6,6 +6,7 @@ import { CountriesAPI, CitiesAPI, AgenciesAPI, SpeakersAPI } from './api.js';
 
 const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org';
 const DEBOUNCE_DELAY = 300; // ms
+const NOMINATIM_TIMEOUT = 5000; // 5 segundos
 
 /**
  * Debounce helper

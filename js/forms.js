@@ -1134,6 +1134,24 @@ function initCityAutocomplete() {
  * Inicializar autocompletados de ponentes
  */
 function initSpeakerAutocompletes(presentationIndex, speakerIndex) {
+    // Autocompletado del NOMBRE del speaker
+    const nameInput = document.querySelector(
+        `.speaker-name[data-presentation-index="${presentationIndex}"][data-speaker-index="${speakerIndex}"]`
+    );
+    
+    if (nameInput && !nameInput.dataset.autocompleteInit) {
+        const nameAc = new Autocomplete(nameInput, {
+            type: 'speaker',
+            searchLocal: true,
+            allowCreate: false, // No permitir crear desde aquí, solo seleccionar existentes
+            onSelect: (data, type) => {
+                handleSpeakerNameSelect(data, type, presentationIndex, speakerIndex);
+            }
+        });
+        autocompleteInstances.push(nameAc);
+        nameInput.dataset.autocompleteInit = 'true';
+    }
+
     // País del ponente
     const countryInput = document.querySelector(
         `.speaker-country[data-presentation-index="${presentationIndex}"][data-speaker-index="${speakerIndex}"]`

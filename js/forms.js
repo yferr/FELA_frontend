@@ -528,6 +528,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
             speakerRow.className = 'speaker-row';
             speakerRow.innerHTML = `
                 <div class="form-group">
+                    <input type="hidden" class="speaker-id" data-index="${index}" value="${speaker.id || ''}">
                     <input 
                         type="text" 
                         class="form-control speaker-name"
@@ -536,6 +537,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                         value="${speaker.name}"
                         required
                     >
+                    ${speaker.id ? '<small class="text-success">✓ Ponente existente en BD</small>' : ''}
                 </div>
                 <div class="form-group">
                     <input 
@@ -561,8 +563,17 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
             container.appendChild(speakerRow);
 
             // Inicializar autocompletados
+            const nameInput = speakerRow.querySelector('.speaker-name');
             const countryInput = speakerRow.querySelector('.speaker-country');
             const agencyInput = speakerRow.querySelector('.speaker-agency');
+            
+            const nameAC = new Autocomplete(nameInput, {
+                type: 'speaker',
+                searchLocal: true,
+                allowCreate: false,
+                onSelect: (data, type) => handleSpeakerSelect(data, index)
+            });
+            autocompleteInstances.push(nameAC);
 
             const countryAC = new Autocomplete(countryInput, {
                 type: 'country',
@@ -580,10 +591,180 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
             autocompleteInstances.push(agencyAC);
         });
     }
+    function handleSpeakerSelect(speakerData, index) {
+        console.log('Speaker seleccionado:', speakerData);
+
+        // Actualizar estado del formulario
+        formState.speakers[index] = {
+            id: speakerData.id,
+            name: speakerData.name,
+            country: speakerData.country_s?.country || speakerData.country_s,
+            agency: speakerData.agency_s || ''
+        };
+
+        // Actualizar campos visibles
+        const speakerRow = document.querySelector(`.speaker-row:nth-child(${index + 1})`);
+        if (speakerRow) {
+            // Campo oculto con ID
+            const hiddenId = speakerRow.querySelector('.speaker-id');
+            if (hiddenId) hiddenId.value = speakerData.id;
+
+            // Nombre
+            const nameInput = speakerRow.querySelector('.speaker-name');
+            if (nameInput) nameInput.value = speakerData.name;
+
+            // País
+            const countryInput = speakerRow.querySelector('.speaker-country');
+            if (countryInput) {
+                countryInput.value = speakerData.country_s?.country || speakerData.country_s;
+            }
+
+            // Agencia
+            const agencyInput = speakerRow.querySelector('.speaker-agency');
+            if (agencyInput) {
+                agencyInput.value = speakerData.agency_s || '';
+            }
+        }
+
+        // Re-renderizar para mostrar indicador visual
+        renderSpeakers();
+    }
+
+    /**
+     * 🆕 NUEVO: Handler cuando se selecciona un país para speaker
+     */
+    function handleSpeakerCountrySelect(countryData, index) {
+        const countryName = countryData.country || countryData.name;
+
+        // Actualizar estado
+        if (formState.speakers[index]) {
+            formState.speakers[index].country = countryName;
+            formState.speakers[index].countryData = {
+                name: countryName,
+                lat: countryData.lat,
+                lon: countryData.lon,
+                isNew: !countryData.country // Es nuevo si viene de Nominatim
+            };
+        }
+    }
+
+    /**
+     * 🆕 NUEVO: Handler cuando se crea un país nuevo para speaker
+     */
+    async function handleSpeakerCountryCreate(countryName, index) {
+        console.log('🔍 Buscando coordenadas para:', countryName);
+
+        showAlert('Buscando coordenadas automáticamente en Nominatim...', 'info');
+
+        try {
+            // Importar NominatimAPI desde autocomplete.js
+            const response = await axios.get('https://nominatim.openstreetmap.org/search', {
+                params: {
+                    country: countryName,
+                    format: 'json',
+                    addressdetails: 1,
+                    limit: 5
+                },
+                headers: {
+                    'Accept-Language': 'es,en'
+                },
+                timeout: 5000
+            });
+
+            if (response.data && response.data.length > 0) {
+                // Tomar el primer resultado
+                const result = response.data[0];
+                const coords = {
+                    name: countryName,
+                    lat: parseFloat(result.lat),
+                    lon: parseFloat(result.lon)
+                };
+
+                console.log('✅ Coordenadas encontradas:', coords);
+
+                // Actualizar estado
+                formState.speakers[index].country = countryName;
+                formState.speakers[index].countryData = {
+                    ...coords,
+                    isNew: true
+                };
+
+                // Actualizar input
+                const countryInput = document.querySelector(
+                    `.speaker-country[data-index="${index}"]`
+                );
+                if (countryInput) {
+                    countryInput.value = countryName;
+                }
+
+                showAlert(`✅ Coordenadas encontradas para ${countryName}: ${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}`, 'success');
+
+            } else {
+                throw new Error('No se encontraron resultados');
+            }
+
+        } catch (error) {
+            console.error('❌ Error buscando coordenadas:', error);
+
+            // Fallback: pedir coordenadas manualmente
+            const confirmed = confirm(
+                `No se encontraron coordenadas automáticamente para "${countryName}".\n\n` +
+                `¿Deseas ingresar las coordenadas manualmente?\n` +
+                `(Si seleccionas "Cancelar", se usará un país genérico)`
+            );
+
+            if (confirmed) {
+                const lat = prompt('Latitud (formato decimal, ej: 40.4168):');
+                const lon = prompt('Longitud (formato decimal, ej: -3.7038):');
+
+                if (lat && lon && !isNaN(lat) && !isNaN(lon)) {
+                    formState.speakers[index].country = countryName;
+                    formState.speakers[index].countryData = {
+                        name: countryName,
+                        lat: parseFloat(lat),
+                        lon: parseFloat(lon),
+                        isNew: true
+                    };
+
+                    const countryInput = document.querySelector(
+                        `.speaker-country[data-index="${index}"]`
+                    );
+                    if (countryInput) {
+                        countryInput.value = countryName;
+                    }
+
+                    showAlert('✅ Coordenadas ingresadas manualmente', 'success');
+                } else {
+                    showAlert('⚠️ Coordenadas inválidas. Intenta nuevamente.', 'warning');
+                }
+            } else {
+                // Usar país genérico "-"
+                formState.speakers[index].country = '-';
+                formState.speakers[index].countryData = {
+                    name: '-',
+                    lat: 0,
+                    lon: 0,
+                    isNew: true
+                };
+
+                const countryInput = document.querySelector(
+                    `.speaker-country[data-index="${index}"]`
+                );
+                if (countryInput) {
+                    countryInput.value = '-';
+                }
+
+                showAlert('ℹ️ Se usará país genérico "-"', 'info');
+            }
+        }
+    }
+//--------------------
+
+
 
     function attachAddPresentationListeners() {
         const form = document.getElementById('add-presentation-form');
-
+    
         // Volver
         document.getElementById('back-to-add-options')?.addEventListener('click', () => {
             initAddOptionsView(container);
@@ -691,20 +872,30 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                 }
             }
 
-            // 4. Recopilar speakers
+            // ============================================
+            // 🆕 CAMBIO PRINCIPAL: Recopilar speakers con lógica de ID
+            // ============================================
             const speakers = [];
             const speakerRows = document.querySelectorAll('.speaker-row');
+
             for (let row of speakerRows) {
+                const speakerId = row.querySelector('.speaker-id').value.trim();
                 const name = row.querySelector('.speaker-name').value.trim();
                 const country = row.querySelector('.speaker-country').value.trim();
                 const agency = row.querySelector('.speaker-agency').value.trim();
 
-                if (!name || !country) {
-                    showAlert('❌ Todos los ponentes deben tener nombre y país', 'error');
+                // 🆕 VALIDACIÓN MEJORADA: Verificar ID existente O nombre+país
+                if (!speakerId && (!name || !country)) {
+                    showAlert('❌ Todos los ponentes deben tener nombre y país, o ser seleccionados de la lista existente', 'error');
                     return;
                 }
 
-                speakers.push({ name, country, agency });
+                speakers.push({ 
+                    id: speakerId || null,  // 🆕 Incluir ID si existe
+                    name, 
+                    country, 
+                    agency 
+                });
             }
 
             // 5. Crear presentación
@@ -723,31 +914,56 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
 
             const presentationId = presResult.data.id;
 
-            // 6. Crear/asociar speakers
+            // ============================================
+            // 🆕 CAMBIO: Procesar speakers con lógica de ID
+            // ============================================
             for (let speakerData of speakers) {
-                // Buscar speaker existente
-                const existingSpeaker = await SpeakersAPI.list(speakerData.name, speakerData.country);
                 let speaker;
 
-                if (existingSpeaker.success && existingSpeaker.data.results && existingSpeaker.data.results.length > 0) {
-                    speaker = existingSpeaker.data.results[0];
-                } else {
-                    // Crear nuevo
-                    const newSpeaker = await SpeakersAPI.create({
-                        name: speakerData.name,
-                        country_s: speakerData.country,
-                        agency_s: speakerData.agency
-                    });
+                // 🆕 CASO 1: Speaker existente (tiene ID)
+                if (speakerData.id) {
+                    console.log('✅ Usando speaker existente con ID:', speakerData.id);
+                    speaker = { id: speakerData.id };
 
-                    if (!newSpeaker.success) {
-                        console.error('Error al crear speaker:', newSpeaker.error);
-                        continue;
+                } else {
+                    // 🆕 CASO 2: Speaker nuevo (crear con país nuevo si es necesario)
+                    console.log('🆕 Creando nuevo speaker:', speakerData.name);
+
+                    // Buscar primero por nombre+país (case-insensitive)
+                    const existingSpeaker = await SpeakersAPI.list(speakerData.name, speakerData.country);
+
+                    if (existingSpeaker.success && existingSpeaker.data.results && existingSpeaker.data.results.length > 0) {
+                        // Ya existe este speaker
+                        speaker = existingSpeaker.data.results[0];
+                        console.log('✅ Speaker encontrado en BD:', speaker.id);
+
+                    } else {
+                        // Crear nuevo speaker
+                        // Primero, asegurar que el país existe
+                        await ensureCountryExists(speakerData.country, speakerData);
+
+                        const newSpeaker = await SpeakersAPI.create({
+                            name: speakerData.name,
+                            country_s: speakerData.country,
+                            agency_s: speakerData.agency
+                        });
+
+                        if (!newSpeaker.success) {
+                            console.error('❌ Error al crear speaker:', newSpeaker.error);
+                            showAlert(`⚠️ No se pudo crear el ponente "${speakerData.name}": ${newSpeaker.error}`, 'warning');
+                            continue;
+                        }
+                        speaker = newSpeaker.data;
+                        console.log('✅ Speaker creado con ID:', speaker.id);
                     }
-                    speaker = newSpeaker.data;
                 }
 
                 // Asociar speaker con presentación
-                await PresentationsAPI.addSpeaker(presentationId, speaker.id);
+                const assocResult = await PresentationsAPI.addSpeaker(presentationId, speaker.id);
+
+                if (!assocResult.success) {
+                    console.error('⚠️ Error al asociar speaker:', assocResult.error);
+                }
             }
 
             // 7. Éxito
@@ -764,7 +980,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = '💾 Guardar Presentación';
         }
-    }
+    }   
 
     function showAlert(message, type = 'info') {
         const alertDiv = document.getElementById('add-pres-alert');
@@ -778,7 +994,47 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
             }, 5000);
         }
     }
+    
+    async function ensureCountryExists(countryName, speakerData) {
+        // Buscar si el país existe
+        const existingCountry = await CountriesAPI.list(countryName);
+        
+        if (existingCountry.success && existingCountry.data.results && existingCountry.data.results.length > 0) {
+            console.log('✅ País ya existe:', countryName);
+            return existingCountry.data.results[0];
+        }
+
+        // País no existe, intentar crearlo
+        console.log('🆕 Creando país nuevo:', countryName);
+
+        // Obtener coordenadas del estado si existen
+        const index = formState.speakers.findIndex(s => s.name === speakerData.name);
+        let coords = { lat: 0, lon: 0 };
+
+        if (index >= 0 && formState.speakers[index].countryData) {
+            coords = {
+                lat: formState.speakers[index].countryData.lat,
+                lon: formState.speakers[index].countryData.lon
+            };
+        }
+
+        // Crear país
+        const newCountry = await CountriesAPI.create({
+            country: countryName,
+            lat: coords.lat,
+            lon: coords.lon
+        });
+
+        if (newCountry.success) {
+            console.log('✅ País creado:', countryName);
+            return newCountry.data;
+        } else {
+            console.error('❌ Error al crear país:', newCountry.error);
+            throw new Error(`No se pudo crear el país "${countryName}"`);
+        }
+    }
 }
+
 
 /**
  * ====================================

@@ -71,6 +71,79 @@ function resetFormState() {
 }
 
 /**
+ * FUNCIÓN GLOBAL
+ * Handler cuando se selecciona un speaker existente desde el autocompletado
+ * Funciona tanto para el formulario de crear evento como para agregar presentación
+ */
+function handleSpeakerNameSelect(speakerData, type, presentationIndex, speakerIndex) {
+    console.log('✅ Speaker seleccionado:', speakerData);
+    console.log('Índices:', { presentationIndex, speakerIndex });
+
+    // Actualizar formState
+    if (!formState.presentations[presentationIndex]) {
+        formState.presentations[presentationIndex] = { speakers: [] };
+    }
+    if (!formState.presentations[presentationIndex].speakers[speakerIndex]) {
+        formState.presentations[presentationIndex].speakers[speakerIndex] = {};
+    }
+
+    // Guardar datos del speaker en el estado
+    formState.presentations[presentationIndex].speakers[speakerIndex] = {
+        id: speakerData.id,
+        name: speakerData.name,
+        country: speakerData.country_s?.country || speakerData.country_s,
+        agency: speakerData.agency_s || ''
+    };
+
+    // Actualizar campos en el DOM
+    const speakerRow = document.querySelector(
+        `.speaker-row[data-presentation-index="${presentationIndex}"][data-speaker-index="${speakerIndex}"]`
+    );
+
+    if (speakerRow) {
+        // Campo hidden con ID
+        const hiddenIdInput = speakerRow.querySelector('.speaker-id');
+        if (hiddenIdInput) {
+            hiddenIdInput.value = speakerData.id;
+        }
+
+        // Nombre
+        const nameInput = speakerRow.querySelector('.speaker-name');
+        if (nameInput) {
+            nameInput.value = speakerData.name;
+        }
+
+        // País
+        const countryInput = speakerRow.querySelector('.speaker-country');
+        if (countryInput) {
+            const countryName = speakerData.country_s?.country || speakerData.country_s;
+            countryInput.value = countryName;
+            // Bloquear el campo ya que viene de BD
+            countryInput.disabled = true;
+            countryInput.style.backgroundColor = '#f0f0f0';
+            countryInput.title = 'Este campo está bloqueado porque el ponente existe en la base de datos';
+        }
+
+        // Agencia
+        const agencyInput = speakerRow.querySelector('.speaker-agency');
+        if (agencyInput) {
+            agencyInput.value = speakerData.agency_s || '';
+            // Bloquear el campo ya que viene de BD
+            agencyInput.disabled = true;
+            agencyInput.style.backgroundColor = '#f0f0f0';
+            agencyInput.title = 'Este campo está bloqueado porque el ponente existe en la base de datos';
+        }
+
+        // Mostrar indicador visual
+        const statusIndicator = speakerRow.querySelector('.speaker-status-indicator');
+        if (statusIndicator) {
+            statusIndicator.style.display = 'block';
+        }
+    }
+
+    console.log('✅ Campos actualizados para speaker existente');
+}
+/**
  * ====================================
  * GENERACIÓN DE HTML
  * ====================================
@@ -302,6 +375,7 @@ function generatePresentationHTML(index) {
 function generateSpeakerRowHTML(presentationIndex, speakerIndex) {
     return `
         <div class="speaker-row" data-presentation-index="${presentationIndex}" data-speaker-index="${speakerIndex}">
+            <input type="hidden" class="speaker-id" data-presentation-index="${presentationIndex}" data-speaker-index="${speakerIndex}" value="">
             <div class="form-group">
                 <input 
                     type="text" 
@@ -571,7 +645,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                 type: 'speaker',
                 searchLocal: true,
                 allowCreate: false,
-                onSelect: (data, type) => handleSpeakerSelect(data, index)
+                onSelect: (data, type) => handleSpeakerSelect(data, index)          //-------------------------------------------------------
             });
             autocompleteInstances.push(nameAC);
 
@@ -591,6 +665,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
             autocompleteInstances.push(agencyAC);
         });
     }
+    /*
     function handleSpeakerSelect(speakerData, index) {
         console.log('Speaker seleccionado:', speakerData);
 
@@ -628,8 +703,63 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
 
         // Re-renderizar para mostrar indicador visual
         renderSpeakers();
-    }
+    }*/
+    function handleSpeakerSelect(speakerData, index) {
+        console.log('✅ Speaker seleccionado:', speakerData);
 
+        // Actualizar estado del formulario
+        formState.speakers[index] = {
+            id: speakerData.id,
+            name: speakerData.name,
+            country: speakerData.country_s?.country || speakerData.country_s,
+            agency: speakerData.agency_s || ''
+        };
+
+        // Actualizar campos visibles directamente (SIN re-renderizar)
+        const speakerRow = document.querySelector(`.speaker-row:nth-child(${index + 1})`);
+        if (speakerRow) {
+            // Campo oculto con ID
+            const hiddenId = speakerRow.querySelector('.speaker-id');
+            if (hiddenId) hiddenId.value = speakerData.id;
+
+            // Nombre
+            const nameInput = speakerRow.querySelector('.speaker-name');
+            if (nameInput) nameInput.value = speakerData.name;
+
+            // País
+            const countryInput = speakerRow.querySelector('.speaker-country');
+            if (countryInput) {
+                countryInput.value = speakerData.country_s?.country || speakerData.country_s;
+                // ✅ Bloquear campo
+                countryInput.disabled = true;
+                countryInput.style.backgroundColor = '#f0f0f0';
+                countryInput.title = 'Campo bloqueado - Speaker existente';
+            }
+
+            // Agencia
+            const agencyInput = speakerRow.querySelector('.speaker-agency');
+            if (agencyInput) {
+                agencyInput.value = speakerData.agency_s || '';
+                // ✅ Bloquear campo
+                agencyInput.disabled = true;
+                agencyInput.style.backgroundColor = '#f0f0f0';
+                agencyInput.title = 'Campo bloqueado - Speaker existente';
+            }
+
+            // ✅ Mostrar indicador visual
+            const statusIndicator = speakerRow.querySelector('.speaker-status-indicator');
+            if (!statusIndicator) {
+                // Crear indicador si no existe
+                const indicator = document.createElement('small');
+                indicator.className = 'speaker-status-indicator';
+                indicator.style.cssText = 'display: block; color: #28a745; font-size: 0.8rem; margin-top: 4px;';
+                indicator.textContent = '✓ Ponente existente en BD';
+                nameInput.parentNode.appendChild(indicator);
+            }
+        }
+
+        console.log('✅ Campos actualizados sin re-renderizar');
+    }   
     /**
      * 🆕 NUEVO: Handler cuando se selecciona un país para speaker
      */
@@ -875,7 +1005,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
             // ============================================
             // 🆕 CAMBIO PRINCIPAL: Recopilar speakers con lógica de ID
             // ============================================
-            const speakers = [];
+            /*const speakers = [];
             const speakerRows = document.querySelectorAll('.speaker-row');
 
             for (let row of speakerRows) {
@@ -890,6 +1020,37 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                     return;
                 }
 
+                speakers.push({ 
+                    id: speakerId || null,  // 🆕 Incluir ID si existe
+                    name, 
+                    country, 
+                    agency 
+                });
+            }*/
+          
+            const speakers = [];
+            const speakerRows = document.querySelectorAll('.speaker-row');
+
+            for (let row of speakerRows) {
+                // ✅ VALIDACIÓN: Verificar que exista el elemento antes de acceder a .value
+                const speakerIdInput = row.querySelector('.speaker-id');
+                const speakerId = speakerIdInput ? speakerIdInput.value.trim() : '';
+
+                const nameInput = row.querySelector('.speaker-name');
+                const name = nameInput ? nameInput.value.trim() : '';
+
+                const countryInput = row.querySelector('.speaker-country');
+                const country = countryInput ? countryInput.value.trim() : '';
+
+                const agencyInput = row.querySelector('.speaker-agency');
+                const agency = agencyInput ? agencyInput.value.trim() : '';
+            
+                // 🆕 VALIDACIÓN MEJORADA: Verificar ID existente O nombre+país
+                if (!speakerId && (!name || !country)) {
+                    showAlert('❌ Todos los ponentes deben tener nombre y país, o ser seleccionados de la lista existente', 'error');
+                    return;
+                }
+            
                 speakers.push({ 
                     id: speakerId || null,  // 🆕 Incluir ID si existe
                     name, 
@@ -994,7 +1155,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
             }, 5000);
         }
     }
-    
+
     async function ensureCountryExists(countryName, speakerData) {
         // Buscar si el país existe
         const existingCountry = await CountriesAPI.list(countryName);
@@ -1388,7 +1549,7 @@ function initCityAutocomplete() {
 
 /**
  * Inicializar autocompletados de ponentes
- */
+ 
 function initSpeakerAutocompletes(presentationIndex, speakerIndex) {
     // Autocompletado del NOMBRE del speaker
     const nameInput = document.querySelector(
@@ -1406,6 +1567,92 @@ function initSpeakerAutocompletes(presentationIndex, speakerIndex) {
         });
         autocompleteInstances.push(nameAc);
         nameInput.dataset.autocompleteInit = 'true';
+    }
+
+    // País del ponente
+    const countryInput = document.querySelector(
+        `.speaker-country[data-presentation-index="${presentationIndex}"][data-speaker-index="${speakerIndex}"]`
+    );
+    
+    if (countryInput && !countryInput.dataset.autocompleteInit) {
+        const ac = new Autocomplete(countryInput, {
+            type: 'country',
+            searchLocal: true,
+            searchNominatim: true,
+            allowCreate: true,
+            onSelect: (data, type) => {
+                handleSpeakerCountrySelect(data, type, presentationIndex, speakerIndex);
+            }
+        });
+        autocompleteInstances.push(ac);
+        countryInput.dataset.autocompleteInit = 'true';
+    }
+
+    // Agencia del ponente
+    const agencyInput = document.querySelector(
+        `.speaker-agency[data-presentation-index="${presentationIndex}"][data-speaker-index="${speakerIndex}"]`
+    );
+    
+    if (agencyInput && !agencyInput.dataset.autocompleteInit) {
+        const ac = new Autocomplete(agencyInput, {
+            type: 'agency',
+            searchLocal: true,
+            allowCreate: true
+        });
+        autocompleteInstances.push(ac);
+        agencyInput.dataset.autocompleteInit = 'true';
+    }
+}*/
+/**
+ * Inicializar autocompletados de ponentes
+ * ✅ MODIFICADO: Ahora incluye handler onSelect
+ */
+function initSpeakerAutocompletes(presentationIndex, speakerIndex) {
+    // Autocompletado del NOMBRE del speaker
+    const nameInput = document.querySelector(
+        `.speaker-name[data-presentation-index="${presentationIndex}"][data-speaker-index="${speakerIndex}"]`
+    );
+    
+    if (nameInput && !nameInput.dataset.autocompleteInit) {
+        const nameAc = new Autocomplete(nameInput, {
+            type: 'speaker',
+            searchLocal: true,
+            allowCreate: false,
+            // ✅ AGREGADO: onSelect handler
+            onSelect: (data, type) => {
+                handleSpeakerNameSelect(data, type, presentationIndex, speakerIndex);
+            }
+        });
+        autocompleteInstances.push(nameAc);
+        nameInput.dataset.autocompleteInit = 'true';
+        
+        // ✅ NUEVO: Event listener para limpiar campos cuando se escribe manualmente
+        nameInput.addEventListener('input', (e) => {
+            const speakerRow = e.target.closest('.speaker-row');
+            if (speakerRow) {
+                const hiddenId = speakerRow.querySelector('.speaker-id');
+                const countryInput = speakerRow.querySelector('.speaker-country');
+                const agencyInput = speakerRow.querySelector('.speaker-agency');
+                const statusIndicator = speakerRow.querySelector('.speaker-status-indicator');
+                
+                // Si el usuario empieza a escribir, limpiar ID y desbloquear campos
+                if (hiddenId && hiddenId.value) {
+                    hiddenId.value = '';
+                    
+                    if (countryInput) {
+                        countryInput.disabled = false;
+                        countryInput.style.backgroundColor = '';
+                    }
+                    if (agencyInput) {
+                        agencyInput.disabled = false;
+                        agencyInput.style.backgroundColor = '';
+                    }
+                    if (statusIndicator) {
+                        statusIndicator.style.display = 'none';
+                    }
+                }
+            }
+        });
     }
 
     // País del ponente
@@ -1856,6 +2103,7 @@ async function handleFormSubmit(e) {
     }
 }
 
+/*
 function collectFormData() {
     return {
         // Datos del evento
@@ -1905,6 +2153,74 @@ function collectFormData() {
                         agency: agencyInput.value.trim()
                     };
                 })
+            };
+        })
+    };
+}*/
+/**
+ * ✅ MODIFICADO: Mejorada la recolección de datos de speakers
+ */
+function collectFormData() {
+    return {
+        // Datos del evento
+        country: formState.country?.name || document.getElementById('event-country').value,
+        city: formState.city?.name || document.getElementById('event-city').value,
+        country_lat: formState.country?.lat || 0,
+        country_lon: formState.country?.lon || 0,
+        city_lat: formState.city?.lat || 0,
+        city_lon: formState.city?.lon || 0,
+        date: document.getElementById('event-date').value.trim(),
+        year: parseInt(document.getElementById('event-year').value),
+        type: document.getElementById('event-type').value.trim(),
+        event_title: document.getElementById('event-title').value.trim(),
+        agencies: formState.agencies,
+
+        // Presentaciones
+        presentations: formState.presentations.map((pres, index) => {
+            const titleInput = document.querySelector(
+                `.presentation-title[data-presentation-index="${index}"]`
+            );
+            const urlInput = document.querySelector(
+                `.presentation-url[data-presentation-index="${index}"]`
+            );
+            const obsInput = document.querySelector(
+                `.presentation-observations[data-presentation-index="${index}"]`
+            );
+
+            return {
+                title: titleInput.value.trim(),
+                language: pres.languages,
+                url: urlInput.value.trim(),
+                observations: obsInput.value.trim(),
+                speakers: pres.speakers.map((speaker, sIndex) => {
+                    // ✅ MEJORADO: Buscar primero el campo hidden
+                    const speakerRow = document.querySelector(
+                        `.speaker-row[data-presentation-index="${index}"][data-speaker-index="${sIndex}"]`
+                    );
+                    
+                    if (!speakerRow) {
+                        console.warn(`⚠️ No se encontró speaker row para P${index}-S${sIndex}`);
+                        return null;
+                    }
+
+                    const hiddenId = speakerRow.querySelector('.speaker-id');
+                    const nameInput = speakerRow.querySelector('.speaker-name');
+                    const countryInput = speakerRow.querySelector('.speaker-country');
+                    const agencyInput = speakerRow.querySelector('.speaker-agency');
+
+                    // ✅ Validar que los elementos existan
+                    if (!nameInput || !countryInput) {
+                        console.warn(`⚠️ Campos faltantes para P${index}-S${sIndex}`);
+                        return null;
+                    }
+
+                    return {
+                        id: hiddenId?.value?.trim() || null,  // ✅ ID si existe
+                        name: nameInput.value.trim(),
+                        country: countryInput.value.trim(),
+                        agency: agencyInput?.value?.trim() || ''
+                    };
+                }).filter(s => s !== null)  // ✅ Filtrar nulls
             };
         })
     };

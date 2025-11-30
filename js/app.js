@@ -31,7 +31,7 @@ window.agenciesLayer = null;
 const API_BASE_URL = 'http://localhost:8888/FELA';
 
 // Main Menu switching
-document.querySelectorAll('.menu-item').forEach(button => {
+/*document.querySelectorAll('.menu-item').forEach(button => {
   button.addEventListener('click', () => {
     document.querySelectorAll('.menu-item').forEach(btn => btn.classList.remove('active'));
     button.classList.add('active');
@@ -45,6 +45,41 @@ document.querySelectorAll('.menu-item').forEach(button => {
       controlsContainer.style.display = 'block';
     } else {
       controlsContainer.style.display = 'none';
+    }
+  });
+});
+*/
+
+// ✅ CORREGIDO: Main Menu switching con validación
+document.querySelectorAll('.menu-item').forEach(button => {
+  button.addEventListener('click', () => {
+    // ✅ VALIDAR: Ignorar botón de auth que no tiene data-section
+    if (!button.dataset.section) {
+      console.log('🔘 Botón sin data-section (auth), ignorando cambio de sección');
+      return;
+    }
+    
+    document.querySelectorAll('.menu-item').forEach(btn => btn.classList.remove('active'));
+    button.classList.add('active');
+
+    document.querySelectorAll('.section').forEach(sec => sec.classList.remove('visible'));
+    const sectionId = `${button.dataset.section}-container`;
+    const targetSection = document.getElementById(sectionId);
+    
+    // ✅ VALIDAR: Verificar que la sección existe
+    if (targetSection) {
+      targetSection.classList.add('visible');
+    } else {
+      console.error(`❌ Sección no encontrada: ${sectionId}`);
+    }
+
+    const controlsContainer = document.querySelector('.controls-container');
+    if (controlsContainer) {
+      if (button.dataset.section === 'map') {
+        controlsContainer.style.display = 'block';
+      } else {
+        controlsContainer.style.display = 'none';
+      }
     }
   });
 });

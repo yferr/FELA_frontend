@@ -1,18 +1,9 @@
 /**
  * API Module - Wrapper para todas las llamadas HTTP al backend Django
+ * ✅ CORREGIDO: CSRF token dinámico en cada petición
  */
 
 const API_BASE_URL = 'http://localhost:8888';
-
-/**
- * Configuración de axios con credenciales
-
-const axiosConfig = {
-    withCredentials: true, // Importante para sesiones
-    headers: {
-        'Content-Type': 'application/json',
-    }
-}; */
 
 /**
  * Obtener token CSRF de las cookies
@@ -33,10 +24,19 @@ function getCookie(name) {
 }
 
 /**
+ * ✅ CORREGIDO: Función que se llama dinámicamente en cada petición
  * Configuración de axios con credenciales y CSRF
  */
 function getAxiosConfig() {
     const csrfToken = getCookie('csrftoken');
+    
+    // Debug: Mostrar token en consola
+    if (csrfToken) {
+        console.log('🔑 CSRF Token encontrado:', csrfToken.substring(0, 20) + '...');
+    } else {
+        console.warn('⚠️ CSRF Token no encontrado en cookies');
+    }
+    
     return {
         withCredentials: true,
         headers: {
@@ -46,8 +46,6 @@ function getAxiosConfig() {
     };
 }
 
-const axiosConfig = getAxiosConfig();
-
 /**
  * Manejo centralizado de errores
  */
@@ -55,18 +53,20 @@ function handleAPIError(error, customMessage = 'Error en la operación') {
     console.error('API Error:', error);
     
     if (error.response) {
-        // El servidor respondió con error
         const status = error.response.status;
         const data = error.response.data;
         
         if (status === 401) {
             return { success: false, error: 'No autorizado. Por favor inicia sesión.' };
         } else if (status === 403) {
+            // Mejorar mensaje de error CSRF
+            if (data.detail && data.detail.includes('CSRF')) {
+                return { success: false, error: 'Error de seguridad (CSRF). Recarga la página e intenta nuevamente.' };
+            }
             return { success: false, error: 'No tienes permisos para esta acción.' };
         } else if (status === 404) {
             return { success: false, error: 'Recurso no encontrado.' };
         } else if (status === 400 && data) {
-            // Errores de validación del backend
             const errorMessages = Object.entries(data)
                 .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
                 .join('\n');
@@ -79,13 +79,11 @@ function handleAPIError(error, customMessage = 'Error en la operación') {
             details: data 
         };
     } else if (error.request) {
-        // La petición se hizo pero no hubo respuesta
         return { 
             success: false, 
             error: 'No se pudo conectar con el servidor. Verifica que el backend esté corriendo.' 
         };
     } else {
-        // Error al configurar la petición
         return { success: false, error: error.message };
     }
 }
@@ -98,27 +96,39 @@ function handleAPIError(error, customMessage = 'Error en la operación') {
 
 export const AuthAPI = {
     /**
-     * Obtener token CSRF
+     * ✅ CORREGIDO: Obtener token CSRF y esperar respuesta
      */
     async getCSRFToken() {
         try {
-            await axios.get(`${API_BASE_URL}/auth/csrf/`, getAxiosConfig);
-            return { success: true };
+            console.log('📡 Solicitando CSRF token...');
+            await axios.get(`${API_BASE_URL}/auth/csrf/`, getAxiosConfig());
+            
+            // Verificar que se creó la cookie
+            const token = getCookie('csrftoken');
+            if (token) {
+                console.log('✅ CSRF token obtenido correctamente');
+                return { success: true, token };
+            } else {
+                console.warn('⚠️ CSRF token no encontrado después de la petición');
+                return { success: false, error: 'No se pudo obtener el token CSRF' };
+            }
         } catch (error) {
             return handleAPIError(error, 'Error al obtener token CSRF');
         }
     },
 
     /**
-     * Login
+     * ✅ CORREGIDO: Login con CSRF token
      */
     async login(username, password) {
         try {
+            console.log('📡 Intentando login...');
             const response = await axios.post(
                 `${API_BASE_URL}/auth/login/`,
                 { username, password },
-                getAxiosConfig
+                getAxiosConfig()  // ✅ Llamar función dinámicamente
             );
+            console.log('✅ Login exitoso');
             return { success: true, data: response.data };
         } catch (error) {
             return handleAPIError(error, 'Error al iniciar sesión');
@@ -133,7 +143,7 @@ export const AuthAPI = {
             const response = await axios.post(
                 `${API_BASE_URL}/auth/register/`,
                 userData,
-                getAxiosConfig
+                getAxiosConfig()  // ✅ Llamar función dinámicamente
             );
             return { success: true, data: response.data };
         } catch (error) {
@@ -142,11 +152,17 @@ export const AuthAPI = {
     },
 
     /**
-     * Logout
+     * ✅ CORREGIDO: Logout con CSRF token
      */
     async logout() {
         try {
-            await axios.post(`${API_BASE_URL}/auth/logout/`, {}, getAxiosConfig);
+            console.log('📡 Intentando logout...');
+            await axios.post(
+                `${API_BASE_URL}/auth/logout/`, 
+                {}, 
+                getAxiosConfig()  // ✅ Llamar función dinámicamente
+            );
+            console.log('✅ Logout exitoso');
             return { success: true };
         } catch (error) {
             return handleAPIError(error, 'Error al cerrar sesión');
@@ -158,7 +174,10 @@ export const AuthAPI = {
      */
     async getCurrentUser() {
         try {
-            const response = await axios.get(`${API_BASE_URL}/auth/user/`, getAxiosConfig);
+            const response = await axios.get(
+                `${API_BASE_URL}/auth/user/`, 
+                getAxiosConfig()  // ✅ Llamar función dinámicamente
+            );
             return { success: true, data: response.data };
         } catch (error) {
             return handleAPIError(error, 'Error al obtener usuario');
@@ -173,30 +192,24 @@ export const AuthAPI = {
  */
 
 export const CountriesAPI = {
-    /**
-     * Listar países con búsqueda
-     */
     async list(search = '') {
         try {
             const url = search 
                 ? `${API_BASE_URL}/FELA/countries/?search=${encodeURIComponent(search)}`
                 : `${API_BASE_URL}/FELA/countries/`;
             
-            const response = await axios.get(url, getAxiosConfig);
+            const response = await axios.get(url, getAxiosConfig());
             return { success: true, data: response.data };
         } catch (error) {
             return handleAPIError(error, 'Error al listar países');
         }
     },
 
-    /**
-     * Obtener país por nombre
-     */
     async get(countryName) {
         try {
             const response = await axios.get(
                 `${API_BASE_URL}/FELA/countries/${encodeURIComponent(countryName)}/`,
-                getAxiosConfig
+                getAxiosConfig()
             );
             return { success: true, data: response.data };
         } catch (error) {
@@ -204,15 +217,12 @@ export const CountriesAPI = {
         }
     },
 
-    /**
-     * Crear país
-     */
     async create(countryData) {
         try {
             const response = await axios.post(
                 `${API_BASE_URL}/FELA/countries/`,
                 countryData,
-                getAxiosConfig
+                getAxiosConfig()
             );
             return { success: true, data: response.data };
         } catch (error) {
@@ -228,31 +238,25 @@ export const CountriesAPI = {
  */
 
 export const CitiesAPI = {
-    /**
-     * Listar ciudades con filtros
-     */
     async list(search = '', country = '') {
         try {
             let url = `${API_BASE_URL}/FELA/cities/?`;
             if (search) url += `search=${encodeURIComponent(search)}&`;
             if (country) url += `country=${encodeURIComponent(country)}`;
             
-            const response = await axios.get(url, getAxiosConfig);
+            const response = await axios.get(url, getAxiosConfig());
             return { success: true, data: response.data };
         } catch (error) {
             return handleAPIError(error, 'Error al listar ciudades');
         }
     },
 
-    /**
-     * Crear ciudad
-     */
     async create(cityData) {
         try {
             const response = await axios.post(
                 `${API_BASE_URL}/FELA/cities/`,
                 cityData,
-                getAxiosConfig
+                getAxiosConfig()
             );
             return { success: true, data: response.data };
         } catch (error) {
@@ -268,31 +272,25 @@ export const CitiesAPI = {
  */
 
 export const AgenciesAPI = {
-    /**
-     * Listar agencias con búsqueda
-     */
     async list(search = '') {
         try {
             const url = search 
                 ? `${API_BASE_URL}/FELA/agencies/?search=${encodeURIComponent(search)}`
                 : `${API_BASE_URL}/FELA/agencies/`;
             
-            const response = await axios.get(url, getAxiosConfig);
+            const response = await axios.get(url, getAxiosConfig());
             return { success: true, data: response.data };
         } catch (error) {
             return handleAPIError(error, 'Error al listar agencias');
         }
     },
 
-    /**
-     * Crear agencia
-     */
     async create(agencyData) {
         try {
             const response = await axios.post(
                 `${API_BASE_URL}/FELA/agencies/`,
                 agencyData,
-                getAxiosConfig
+                getAxiosConfig()
             );
             return { success: true, data: response.data };
         } catch (error) {
@@ -308,31 +306,25 @@ export const AgenciesAPI = {
  */
 
 export const SpeakersAPI = {
-    /**
-     * Listar speakers con búsqueda
-     */
     async list(nameQuery = '', country = '') {
         try {
             let url = `${API_BASE_URL}/FELA/speakers/?`;
             if (nameQuery) url += `search=${encodeURIComponent(nameQuery)}&`;
             if (country) url += `country=${encodeURIComponent(country)}`;
             
-            const response = await axios.get(url, getAxiosConfig);
+            const response = await axios.get(url, getAxiosConfig());
             return { success: true, data: response.data };
         } catch (error) {
             return handleAPIError(error, 'Error al listar speakers');
         }
     },
 
-    /**
-     * Crear speaker
-     */
     async create(speakerData) {
         try {
             const response = await axios.post(
                 `${API_BASE_URL}/FELA/speakers/`,
                 speakerData,
-                getAxiosConfig
+                getAxiosConfig()
             );
             return { success: true, data: response.data };
         } catch (error) {
@@ -348,9 +340,6 @@ export const SpeakersAPI = {
  */
 
 export const PresentationsAPI = {
-    /**
-     * Listar presentaciones con filtros
-     */
     async list(filters = {}) {
         try {
             let url = `${API_BASE_URL}/FELA/presentations/?`;
@@ -368,9 +357,6 @@ export const PresentationsAPI = {
         }
     },
 
-    /**
-     * Buscar presentaciones con filtros complejos
-     */
     async search(query) {
         try {
             const response = await axios.get(
@@ -383,9 +369,6 @@ export const PresentationsAPI = {
         }
     },
 
-    /**
-     * Obtener presentación por ID
-     */
     async get(presentationId) {
         try {
             const response = await axios.get(
@@ -398,9 +381,6 @@ export const PresentationsAPI = {
         }
     },
 
-    /**
-     * Crear presentación
-     */
     async create(presentationData) {
         try {
             const response = await axios.post(
@@ -414,9 +394,6 @@ export const PresentationsAPI = {
         }
     },
 
-    /**
-     * Actualizar presentación
-     */
     async update(presentationId, presentationData) {
         try {
             const response = await axios.put(
@@ -430,9 +407,6 @@ export const PresentationsAPI = {
         }
     },
 
-    /**
-     * Eliminar presentación
-     */
     async delete(presentationId) {
         try {
             await axios.delete(
@@ -445,9 +419,6 @@ export const PresentationsAPI = {
         }
     },
 
-    /**
-     * Agregar speaker a presentación
-     */
     async addSpeaker(presentationId, speakerId) {
         try {
             const response = await axios.post(
@@ -464,9 +435,6 @@ export const PresentationsAPI = {
         }
     },
 
-    /**
-     * Eliminar speaker de presentación
-     */
     async removeSpeaker(presentationId, speakerId) {
         try {
             await axios.delete(
@@ -487,9 +455,6 @@ export const PresentationsAPI = {
  */
 
 export const EventsAPI = {
-    /**
-     * Listar eventos con filtros
-     */
     async list(filters = {}) {
         try {
             let url = `${API_BASE_URL}/FELA/events/?`;
@@ -499,31 +464,26 @@ export const EventsAPI = {
             if (filters.country) url += `country=${encodeURIComponent(filters.country)}&`;
             if (filters.type) url += `type=${encodeURIComponent(filters.type)}&`;
             
-            const response = await axios.get(url, getAxiosConfig);
+            const response = await axios.get(url, getAxiosConfig());
             return { success: true, data: response.data };
         } catch (error) {
             return handleAPIError(error, 'Error al listar eventos');
         }
     },
 
-    /**
-     * Obtener evento por ID
-     */
     async get(eventId) {
         try {
             const response = await axios.get(
                 `${API_BASE_URL}/FELA/events/${eventId}/`,
-                getAxiosConfig
+                getAxiosConfig()
             );
             return { success: true, data: response.data };
         } catch (error) {
             return handleAPIError(error, 'Error al obtener evento');
         }
     },
-    /**
-     * Obtener evento con todos los detalles
-     */
-    async  getWithDetails (eventId) {
+
+    async getWithDetails(eventId) {
         try {
             const response = await axios.get(
                 `${API_BASE_URL}/FELA/events/${eventId}/`,
@@ -534,15 +494,13 @@ export const EventsAPI = {
             return handleAPIError(error, 'Error al obtener evento con detalles');
         }
     },
-    /**
-     * Crear evento completo (con presentaciones y speakers)
-     */
+
     async createComplete(eventData) {
         try {
             const response = await axios.post(
                 `${API_BASE_URL}/FELA/events/create-complete/`,
                 eventData,
-                getAxiosConfig
+                getAxiosConfig()
             );
             return { success: true, data: response.data };
         } catch (error) {
@@ -550,15 +508,12 @@ export const EventsAPI = {
         }
     },
 
-    /**
-     * Actualizar evento
-     */
     async update(eventId, eventData) {
         try {
             const response = await axios.put(
                 `${API_BASE_URL}/FELA/events/${eventId}/`,
                 eventData,
-                getAxiosConfig
+                getAxiosConfig()
             );
             return { success: true, data: response.data };
         } catch (error) {
@@ -566,14 +521,11 @@ export const EventsAPI = {
         }
     },
 
-    /**
-     * Eliminar evento (solo superusuarios)
-     */
     async delete(eventId) {
         try {
             await axios.delete(
                 `${API_BASE_URL}/FELA/events/${eventId}/`,
-                getAxiosConfig
+                getAxiosConfig()
             );
             return { success: true };
         } catch (error) {
@@ -582,8 +534,6 @@ export const EventsAPI = {
     }
 };
 
-
-
 /**
  * ====================================
  * GEOJSON
@@ -591,14 +541,11 @@ export const EventsAPI = {
  */
 
 export const GeoJSONAPI = {
-    /**
-     * Obtener GeoJSON completo
-     */
     async getComplete() {
         try {
             const response = await axios.get(
                 `${API_BASE_URL}/FELA/geojson/`,
-                getAxiosConfig
+                getAxiosConfig()
             );
             return { success: true, data: response.data };
         } catch (error) {
@@ -606,15 +553,12 @@ export const GeoJSONAPI = {
         }
     },
 
-    /**
-     * Refrescar caché del GeoJSON
-     */
     async refresh() {
         try {
             const response = await axios.post(
                 `${API_BASE_URL}/FELA/geojson/refresh/`,
                 {},
-                getAxiosConfig
+                getAxiosConfig()
             );
             return { success: true, data: response.data };
         } catch (error) {
@@ -630,17 +574,11 @@ export const GeoJSONAPI = {
  */
 
 export const Utils = {
-    /**
-     * Verificar si el usuario está autenticado
-     */
     async checkAuth() {
         const result = await AuthAPI.getCurrentUser();
         return result.success;
     },
 
-    /**
-     * Obtener información del usuario actual
-     */
     async getUserInfo() {
         return await AuthAPI.getCurrentUser();
     }

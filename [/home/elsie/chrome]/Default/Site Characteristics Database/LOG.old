@@ -1,3 +1,2 @@
-2025/11/28-00:24:51.645 13c8e Reusing MANIFEST /home/elsie/frontend/[/home/elsie/chrome]/Default/Site Characteristics Database/MANIFEST-000001
-2025/11/28-00:24:52.138 13c8e Recovering log #3
-2025/11/28-00:24:52.145 13c8e Reusing old log /home/elsie/frontend/[/home/elsie/chrome]/Default/Site Characteristics Database/000003.log 
+2025/11/30-21:35:34.602 20d2 Creating DB /home/elsie/frontend/[/home/elsie/chrome]/Default/Site Characteristics Database since it was missing.
+2025/11/30-21:35:34.847 20d2 Reusing MANIFEST /home/elsie/frontend/[/home/elsie/chrome]/Default/Site Characteristics Database/MANIFEST-000001

@@ -1527,3 +1527,26 @@
         flex-direction: column;
     }
 }
+
+/* ====================================
+   INDICADOR DE SPEAKER EXISTENTE
+   ==================================== */
+
+.speaker-status-indicator {
+    display: block;
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #155724;
+}
+
+.speaker-row input:disabled {
+    cursor: not-allowed;
+}
+
+.speaker-row input:disabled::placeholder {
+    color: #999;
+}

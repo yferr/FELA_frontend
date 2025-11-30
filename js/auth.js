@@ -114,7 +114,7 @@ export function initLoginPage() {
  * ====================================
  */
 
-async function handleLogin(e) {
+/*async function handleLogin(e) {
     e.preventDefault();
     
     const submitBtn = document.getElementById('login-submit-btn');
@@ -162,6 +162,74 @@ async function handleLogin(e) {
     } else {
         // Mostrar error
         showAlert(alertDiv, result.error, 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Iniciar Sesión';
+    }
+}*/
+async function handleLogin(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('login-submit-btn');
+    const alertDiv = document.getElementById('login-alert');
+    
+    // Obtener datos del formulario
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    const remember = document.getElementById('remember-me').checked;
+
+    // Validación básica
+    if (!username || !password) {
+        showAlert(alertDiv, 'Por favor completa todos los campos', 'error');
+        return;
+    }
+
+    // Deshabilitar botón
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="loading-spinner"></span> Iniciando sesión...';
+
+    try {
+        // ⭐ PASO 1: Obtener token CSRF PRIMERO
+        console.log('🔐 Paso 1: Obteniendo CSRF token...');
+        const csrfResult = await AuthAPI.getCSRFToken();
+        
+        if (!csrfResult.success) {
+            showAlert(alertDiv, 'Error al obtener token de seguridad. Recarga la página.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Iniciar Sesión';
+            return;
+        }
+
+        // ⭐ PASO 2: Intentar login con el token obtenido
+        console.log('🔐 Paso 2: Intentando login...');
+        const result = await AuthAPI.login(username, password);
+
+        if (result.success) {
+            // Guardar credenciales si está marcado "recordar"
+            if (remember) {
+                saveCredentials(username, password);
+            } else {
+                clearSavedCredentials();
+            }
+
+            // Guardar usuario
+            currentUser = result.data.user;
+
+            // Mostrar mensaje de éxito
+            showAlert(alertDiv, 'Login exitoso. Redirigiendo...', 'success');
+
+            // Redirigir después de 1 segundo
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1000);
+        } else {
+            // Mostrar error
+            showAlert(alertDiv, result.error, 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Iniciar Sesión';
+        }
+    } catch (error) {
+        console.error('❌ Error inesperado en login:', error);
+        showAlert(alertDiv, 'Error inesperado. Por favor intenta nuevamente.', 'error');
         submitBtn.disabled = false;
         submitBtn.textContent = 'Iniciar Sesión';
     }

@@ -2,7 +2,7 @@
  * Forms Module - Generación y manejo de formularios de edición
  */
 
-import { EventsAPI,PresentationsAPI, SpeakersAPI } from './api.js';
+import { EventsAPI,PresentationsAPI, SpeakersAPI, CountriesAPI } from './api.js';
 import { Autocomplete } from './autocomplete.js';
 import { canEdit } from './auth.js';
 
@@ -423,7 +423,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
     let selectedEvent = prefilledEvent;
     let formState = {
         languages: [],
-        speakers: [{ name: '', country: null, agency: '' }]
+        speakers: [{ name: '', country: null, countryData: null, agency: '' }]
     };
     let autocompleteInstances = [];
 
@@ -762,7 +762,8 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
     }   
     /**
      * 🆕 NUEVO: Handler cuando se selecciona un país para speaker
-     */
+    */
+   /* 
     function handleSpeakerCountrySelect(countryData, index) {
         const countryName = countryData.country || countryData.name;
 
@@ -776,8 +777,151 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                 isNew: !countryData.country // Es nuevo si viene de Nominatim
             };
         }
-    }
+    }*/
+    /**
+     * ✅ NUEVA FUNCIÓN: Handler cuando se selecciona un país del autocomplete
+     * Crea automáticamente el país en BD si viene de Nominatim
+     */
+    async function handleSpeakerCountrySelect(data, type, speakerIndex) {
+        console.log('🌍 País seleccionado:', { data, type, speakerIndex });
 
+        const speakerRow = document.querySelector(`.speaker-row:nth-child(${speakerIndex + 1})`);
+        if (!speakerRow) {
+            console.error('❌ No se encontró speaker row para índice:', speakerIndex);
+            return;
+        }
+
+        const countryInput = speakerRow.querySelector('.speaker-country');
+        if (!countryInput) {
+            console.error('❌ No se encontró input de país');
+            return;
+        }
+
+        // Crear indicador de estado si no existe
+        let statusIndicator = countryInput.parentNode.querySelector('.country-status-indicator');
+        if (!statusIndicator) {
+            statusIndicator = document.createElement('small');
+            statusIndicator.className = 'country-status-indicator';
+            statusIndicator.style.cssText = 'display: block; margin-top: 4px; font-size: 0.8rem;';
+            countryInput.parentNode.appendChild(statusIndicator);
+        }
+
+        if (type === 'nominatim') {
+            // País viene de Nominatim - necesita crearse en BD
+            console.log('🆕 País de Nominatim, creando en BD...');
+
+            // Mostrar mensaje de carga
+            statusIndicator.style.color = '#ffc107';
+            statusIndicator.innerHTML = '⏳ Creando país en base de datos...';
+            countryInput.disabled = true;
+
+            try {
+                // Crear país en BD
+                const createResult = await CountriesAPI.create({
+                    country: data.name,
+                    lat: parseFloat(data.lat),
+                    lon: parseFloat(data.lon)
+                });
+
+                if (createResult.success) {
+                    console.log('✅ País creado exitosamente:', createResult.data);
+
+                    // Actualizar formState
+                    formState.speakers[speakerIndex].country = data.name;
+                    formState.speakers[speakerIndex].countryData = {
+                        name: data.name,
+                        lat: parseFloat(data.lat),
+                        lon: parseFloat(data.lon),
+                        isNew: true,
+                        createdNow: true
+                    };
+
+                    // Actualizar UI
+                    countryInput.value = data.name;
+                    statusIndicator.style.color = '#28a745';
+                    statusIndicator.innerHTML = `✅ País creado: ${data.name} (${data.lat}, ${data.lon})`;
+
+                    // Mantener campo bloqueado
+                    countryInput.disabled = true;
+                    countryInput.style.backgroundColor = '#e7f5e7';
+                    countryInput.title = `País creado desde Nominatim - Coordenadas: ${data.lat}, ${data.lon}`;
+
+                } else {
+                    // Error al crear
+                    console.error('❌ Error al crear país:', createResult.error);
+
+                    // Verificar si el error es porque ya existe
+                    if (createResult.error.includes('unique') || createResult.error.includes('already exists')) {
+                        console.log('ℹ️ País ya existe, buscando en BD...');
+
+                        // Buscar el país existente
+                        const searchResult = await CountriesAPI.list(data.name);
+                        if (searchResult.success && searchResult.data.results && searchResult.data.results.length > 0) {
+                            const existingCountry = searchResult.data.results[0];
+
+                            // Actualizar formState con país existente
+                            formState.speakers[speakerIndex].country = existingCountry.country;
+                            formState.speakers[speakerIndex].countryData = {
+                                name: existingCountry.country,
+                                lat: existingCountry.lat,
+                                lon: existingCountry.lon,
+                                isNew: false,
+                                createdNow: false
+                            };
+
+                            countryInput.value = existingCountry.country;
+                            statusIndicator.style.color = '#17a2b8';
+                            statusIndicator.innerHTML = `ℹ️ País existente: ${existingCountry.country} (${existingCountry.lat}, ${existingCountry.lon})`;
+                            countryInput.disabled = true;
+                            countryInput.style.backgroundColor = '#e7f5f5';
+                        } else {
+                            throw new Error('No se pudo verificar el país');
+                        }
+                    } else {
+                        throw new Error(createResult.error);
+                    }
+                }
+
+            } catch (error) {
+                console.error('❌ Error inesperado al procesar país:', error);
+
+                // Mostrar error y permitir reintentar
+                statusIndicator.style.color = '#dc3545';
+                statusIndicator.innerHTML = `❌ Error: ${error.message}`;
+                countryInput.disabled = false;
+                countryInput.style.backgroundColor = '#ffe7e7';
+
+                // Limpiar formState
+                formState.speakers[speakerIndex].country = null;
+                formState.speakers[speakerIndex].countryData = null;
+            }
+
+        } else if (type === 'local') {
+            // País ya existe en BD local
+            console.log('✅ País de BD local:', data);
+
+            // Actualizar formState
+            formState.speakers[speakerIndex].country = data.country;
+            formState.speakers[speakerIndex].countryData = {
+                name: data.country,
+                lat: data.lat,
+                lon: data.lon,
+                isNew: false,
+                createdNow: false
+            };
+
+            // Actualizar UI
+            countryInput.value = data.country;
+            statusIndicator.style.color = '#28a745';
+            statusIndicator.innerHTML = `✅ País: ${data.country} (${data.lat}, ${data.lon})`;
+            countryInput.disabled = true;
+            countryInput.style.backgroundColor = '#f0f0f0';
+            countryInput.title = `País existente - Coordenadas: ${data.lat}, ${data.lon}`;
+
+        } else {
+            console.warn('⚠️ Tipo de país desconocido:', type);
+        }
+    }
     /**
      * 🆕 NUEVO: Handler cuando se crea un país nuevo para speaker
      */
@@ -970,6 +1114,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
         });
     }
 
+    /*
     async function handleAddPresentationSubmit(e) {
         e.preventDefault();
 
@@ -1026,7 +1171,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                     country, 
                     agency 
                 });
-            }*/
+            }+/
           
             const speakers = [];
             const speakerRows = document.querySelectorAll('.speaker-row');
@@ -1141,7 +1286,226 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = '💾 Guardar Presentación';
         }
-    }   
+    }   */
+
+    /**
+     * ✅ MODIFICADO: Submit del formulario de agregar presentación
+     * Ahora valida que los países ya existan (fueron creados en el autocomplete)
+     */
+    async function handleAddPresentationSubmit(e) {
+        e.preventDefault();
+
+        const submitBtn = document.getElementById('add-pres-submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="loading-spinner"></span> Guardando...';
+
+        try {
+            // ========================================
+            // 1. VALIDAR EVENTO SELECCIONADO
+            // ========================================
+            if (!selectedEvent || !selectedEvent.id) {
+                showAlert('❌ Debes seleccionar un evento', 'error');
+                return;
+            }
+
+            console.log('✅ Evento seleccionado:', selectedEvent);
+
+            // ========================================
+            // 2. RECOPILAR DATOS BÁSICOS
+            // ========================================
+            const title = document.getElementById('add-pres-title').value.trim();
+            const url = document.getElementById('add-pres-url').value.trim();
+            const observations = document.getElementById('add-pres-observations').value.trim();
+
+            if (!title) {
+                showAlert('❌ El título es obligatorio', 'error');
+                return;
+            }
+
+            // ========================================
+            // 3. VALIDAR TÍTULO DUPLICADO
+            // ========================================
+            console.log('🔍 Validando título duplicado...');
+            const existingPres = await PresentationsAPI.list({ event_id: selectedEvent.id });
+
+            if (existingPres.success) {
+                const presentations = existingPres.data.results || existingPres.data || [];
+                const duplicate = presentations.find(p => 
+                    p.title.toLowerCase() === title.toLowerCase()
+                );
+
+                if (duplicate) {
+                    showAlert(
+                        `❌ Ya existe una presentación con el título "${title}" en el evento "${selectedEvent.title}". Por favor usa un título diferente.`,
+                        'error'
+                    );
+                    return;
+                }
+            }
+
+            // ========================================
+            // 4. RECOPILAR Y VALIDAR SPEAKERS
+            // ========================================
+            console.log('👥 Validando speakers...');
+            const speakers = [];
+            const speakerRows = document.querySelectorAll('.speaker-row');
+
+            for (let i = 0; i < speakerRows.length; i++) {
+                const row = speakerRows[i];
+
+                const speakerIdInput = row.querySelector('.speaker-id');
+                const speakerId = speakerIdInput ? speakerIdInput.value.trim() : '';
+
+                const nameInput = row.querySelector('.speaker-name');
+                const name = nameInput ? nameInput.value.trim() : '';
+
+                const countryInput = row.querySelector('.speaker-country');
+                const country = countryInput ? countryInput.value.trim() : '';
+
+                const agencyInput = row.querySelector('.speaker-agency');
+                const agency = agencyInput ? agencyInput.value.trim() : '';
+
+                // Validación básica
+                if (!name || !country) {
+                    showAlert(
+                        `❌ El speaker #${i + 1} debe tener nombre y país`,
+                        'error'
+                    );
+                    return;
+                }
+
+                // ✅ VALIDACIÓN CRÍTICA: Verificar que el país tiene datos completos
+                const speakerState = formState.speakers[i];
+                if (!speakerState || !speakerState.countryData) {
+                    showAlert(
+                        `❌ El país "${country}" del speaker "${name}" no fue validado correctamente. Por favor selecciónalo nuevamente del menú desplegable.`,
+                        'error'
+                    );
+
+                    // Resaltar el campo problemático
+                    if (countryInput) {
+                        countryInput.style.border = '2px solid #dc3545';
+                        setTimeout(() => {
+                            countryInput.style.border = '';
+                        }, 3000);
+                    }
+                    return;
+                }
+
+                speakers.push({
+                    id: speakerId || null,
+                    name,
+                    country,
+                    countryData: speakerState.countryData,  // ✅ Incluir datos completos del país
+                    agency
+                });
+            }
+
+            if (speakers.length === 0) {
+                showAlert('❌ Debes agregar al menos un ponente', 'error');
+                return;
+            }
+
+            console.log('✅ Speakers validados:', speakers);
+
+            // ========================================
+            // 5. CREAR PRESENTACIÓN
+            // ========================================
+            console.log('📄 Creando presentación...');
+            const presResult = await PresentationsAPI.create({
+                title: title,
+                event_title: selectedEvent.title,
+                language: formState.languages,
+                url_document: url,
+                observations: observations
+            });
+
+            if (!presResult.success) {
+                showAlert('❌ Error al crear presentación: ' + presResult.error, 'error');
+                return;
+            }
+
+            const presentationId = presResult.data.id;
+            console.log('✅ Presentación creada con ID:', presentationId);
+
+            // ========================================
+            // 6. PROCESAR SPEAKERS
+            // ========================================
+            console.log('👥 Procesando speakers...');
+
+            for (let speakerData of speakers) {
+                let speaker;
+
+                if (speakerData.id) {
+                    // Speaker existente
+                    console.log('✅ Usando speaker existente con ID:', speakerData.id);
+                    speaker = { id: speakerData.id };
+
+                } else {
+                    // Speaker nuevo - necesita crearse
+                    console.log('🆕 Creando nuevo speaker:', speakerData.name);
+
+                    // Buscar primero por nombre+país (puede que ya exista)
+                    const existingSpeaker = await SpeakersAPI.list(speakerData.name, speakerData.country);
+
+                    if (existingSpeaker.success && existingSpeaker.data.results && existingSpeaker.data.results.length > 0) {
+                        // Speaker ya existe
+                        speaker = existingSpeaker.data.results[0];
+                        console.log('✅ Speaker encontrado en BD:', speaker.id);
+
+                    } else {
+                        // Crear nuevo speaker
+                        // ✅ IMPORTANTE: El país YA EXISTE porque fue creado en el autocomplete
+                        const newSpeaker = await SpeakersAPI.create({
+                            name: speakerData.name,
+                            country_s: speakerData.country,
+                            agency_s: speakerData.agency
+                        });
+
+                        if (!newSpeaker.success) {
+                            console.error('❌ Error al crear speaker:', newSpeaker.error);
+                            showAlert(
+                                `⚠️ No se pudo crear el ponente "${speakerData.name}": ${newSpeaker.error}`,
+                                'warning'
+                            );
+                            continue;
+                        }
+
+                        speaker = newSpeaker.data;
+                        console.log('✅ Speaker creado con ID:', speaker.id);
+                    }
+                }
+
+                // Asociar speaker con presentación
+                const assocResult = await PresentationsAPI.addSpeaker(presentationId, speaker.id);
+
+                if (!assocResult.success) {
+                    console.error('⚠️ Error al asociar speaker:', assocResult.error);
+                } else {
+                    console.log('✅ Speaker asociado a presentación');
+                }
+            }
+
+            // ========================================
+            // 7. ÉXITO
+            // ========================================
+            console.log('🎉 Presentación guardada exitosamente');
+            showAlert('✅ Presentación agregada exitosamente', 'success');
+
+            // Recargar después de 2 segundos
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+
+        } catch (error) {
+            console.error('❌ Error inesperado:', error);
+            showAlert('❌ Error inesperado: ' + error.message, 'error');
+
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '💾 Guardar Presentación';
+        }
+    }
 
     function showAlert(message, type = 'info') {
         const alertDiv = document.getElementById('add-pres-alert');
@@ -1156,6 +1520,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
         }
     }
 
+        /*
     async function ensureCountryExists(countryName, speakerData) {
         // Buscar si el país existe
         const existingCountry = await CountriesAPI.list(countryName);
@@ -1193,7 +1558,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
             console.error('❌ Error al crear país:', newCountry.error);
             throw new Error(`No se pudo crear el país "${countryName}"`);
         }
-    }
+    }*/
 }
 
 
@@ -1606,7 +1971,8 @@ function initSpeakerAutocompletes(presentationIndex, speakerIndex) {
 /**
  * Inicializar autocompletados de ponentes
  * ✅ MODIFICADO: Ahora incluye handler onSelect
- */
+ 
+
 function initSpeakerAutocompletes(presentationIndex, speakerIndex) {
     // Autocompletado del NOMBRE del speaker
     const nameInput = document.querySelector(
@@ -1686,6 +2052,70 @@ function initSpeakerAutocompletes(presentationIndex, speakerIndex) {
             allowCreate: true
         });
         autocompleteInstances.push(ac);
+        agencyInput.dataset.autocompleteInit = 'true';
+    }
+}
+ */
+/**
+ * Inicializar autocompletados de un ponente específico
+ */
+function initSpeakerAutocompletes(index) {
+    console.log('🔧 Inicializando autocompletados para speaker', index);
+    // Autocompletado del NOMBRE del speaker
+    const nameInput = document.querySelector(
+        `.speaker-name:nth-of-type(${index + 1})`
+    );
+    if (nameInput && !nameInput.dataset.autocompleteInit) {
+        const nameAC = new Autocomplete(nameInput, {
+            type: 'speaker',
+            searchLocal: true,
+            allowCreate: false,
+            onSelect: (data, type) => handleSpeakerSelect(data, index)
+        });
+        autocompleteInstances.push(nameAC);
+        nameInput.dataset.autocompleteInit = 'true';
+    }
+    // ✅ MODIFICADO: Autocompletado del PAÍS con handler
+    const countryInput = document.querySelector(
+        `.speaker-country:nth-of-type(${index + 1})`
+    );
+    if (countryInput && !countryInput.dataset.autocompleteInit) {
+        const countryAC = new Autocomplete(countryInput, {
+            type: 'country',
+            searchLocal: true,
+            searchNominatim: true,  // ✅ Habilitar búsqueda en Nominatim
+            allowCreate: false,     // No permitir creación manual
+            onSelect: (data, type) => handleSpeakerCountrySelect(data, type, index)  // ✅ AGREGADO
+        });
+        autocompleteInstances.push(countryAC);
+        countryInput.dataset.autocompleteInit = 'true';
+        // ✅ NUEVO: Event listener para detectar cuando se borra el valor
+        countryInput.addEventListener('input', (e) => {
+            if (!e.target.value.trim()) {
+                // Si se borra el país, limpiar estado y desbloquear
+                formState.speakers[index].country = null;
+                formState.speakers[index].countryData = null;
+                e.target.disabled = false;
+                e.target.style.backgroundColor = '';
+                
+                const statusIndicator = e.target.parentNode.querySelector('.country-status-indicator');
+                if (statusIndicator) {
+                    statusIndicator.remove();
+                }
+            }
+        });
+    }
+    // Autocompletado de la AGENCIA
+    const agencyInput = document.querySelector(
+        `.speaker-agency:nth-of-type(${index + 1})`
+    );
+    if (agencyInput && !agencyInput.dataset.autocompleteInit) {
+        const agencyAC = new Autocomplete(agencyInput, {
+            type: 'agency',
+            searchLocal: true,
+            allowCreate: true
+        });
+        autocompleteInstances.push(agencyAC);
         agencyInput.dataset.autocompleteInit = 'true';
     }
 }

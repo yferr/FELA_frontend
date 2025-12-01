@@ -1550,3 +1550,41 @@
 .speaker-row input:disabled::placeholder {
     color: #999;
 }
+/* ====================================
+   INDICADORES DE ESTADO DE PAÍS
+   ==================================== */
+
+.country-status-indicator {
+    display: block;
+    margin-top: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    background: #f8f9fa;
+    border-left: 3px solid #28a745;
+}
+
+.country-status-indicator:empty {
+    display: none;
+}
+
+/* Estados de país */
+.speaker-country:disabled {
+    cursor: not-allowed;
+    opacity: 0.9;
+}
+
+.speaker-country[style*="background-color: rgb(231, 245, 231)"] {
+    /* País creado desde Nominatim */
+    border-left: 3px solid #28a745;
+}
+
+.speaker-country[style*="background-color: rgb(231, 245, 245)"] {
+    /* País existente encontrado */
+    border-left: 3px solid #17a2b8;
+}
+
+.speaker-country[style*="background-color: rgb(255, 231, 231)"] {
+    /* Error al crear país */
+    border-left: 3px solid #dc3545;
+}

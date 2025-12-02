@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { initAuthButton } from './auth.js';
 import { initEditor } from './editor.js';
+
 // Bootstrap
 //import 'bootstrap/dist/css/bootstrap.min.css';
 //import 'bootstrap/dist/js/bootstrap.bundle.min.js';
@@ -28,7 +29,7 @@ window.languagesLayer = null;
 window.agenciesLayer = null;
 
 // Configuración de la API
-const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api/';
+const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api/FELA';
 
 // Main Menu switching
 /*document.querySelectorAll('.menu-item').forEach(button => {
@@ -332,7 +333,7 @@ async function loadData() {
 			errorMessage = `Error del servidor (${error.response.status}): ${error.response.statusText}`;
 			
 			if (error.response.status === 404) {
-				errorMessage = 'No se encontró el endpoint. Verifica que el servidor esté corriendo en http://localhost:8888';
+				errorMessage = 'No se encontró el endpoint. Verifica que el servidor esté corriendo en ' + API_BASE_URL;
 			} else if (error.response.status === 500) {
 				errorMessage = 'Error interno del servidor. Revisa los logs del backend.';
 			}

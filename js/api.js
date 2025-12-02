@@ -2,6 +2,7 @@
  * API Module - Wrapper para todas las llamadas HTTP al backend Django
  * ✅ CORREGIDO: CSRF token dinámico en cada petición
  */
+import axios from 'axios';
 
 const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api';
 

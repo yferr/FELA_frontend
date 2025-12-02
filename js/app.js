@@ -28,7 +28,7 @@ window.languagesLayer = null;
 window.agenciesLayer = null;
 
 // Configuración de la API
-const API_BASE_URL = 'http://localhost:8888/FELA';
+const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api/';
 
 // Main Menu switching
 /*document.querySelectorAll('.menu-item').forEach(button => {

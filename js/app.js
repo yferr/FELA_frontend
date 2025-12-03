@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { initAuthButton } from './auth.js';
 import { initEditor } from './editor.js';
+
 // Bootstrap
 //import 'bootstrap/dist/css/bootstrap.min.css';
 //import 'bootstrap/dist/js/bootstrap.bundle.min.js';
@@ -29,28 +30,12 @@ window.agenciesLayer = null;
 
 // Configuración de la API
 const API_BASE_URL = 'http://localhost:8888/FELA';
+//const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api/FELA';
 
 // Main Menu switching
-/*document.querySelectorAll('.menu-item').forEach(button => {
-  button.addEventListener('click', () => {
-    document.querySelectorAll('.menu-item').forEach(btn => btn.classList.remove('active'));
-    button.classList.add('active');
 
-    document.querySelectorAll('.section').forEach(sec => sec.classList.remove('visible'));
-    const sectionId = `${button.dataset.section}-container`;
-    document.getElementById(sectionId).classList.add('visible');
 
-    const controlsContainer = document.querySelector('.controls-container');
-    if (button.dataset.section === 'map') {
-      controlsContainer.style.display = 'block';
-    } else {
-      controlsContainer.style.display = 'none';
-    }
-  });
-});
-*/
-
-// ✅ CORREGIDO: Main Menu switching con validación
+// Main Menu switching con validación
 document.querySelectorAll('.menu-item').forEach(button => {
   button.addEventListener('click', () => {
     // ✅ VALIDAR: Ignorar botón de auth que no tiene data-section
@@ -332,7 +317,7 @@ async function loadData() {
 			errorMessage = `Error del servidor (${error.response.status}): ${error.response.statusText}`;
 			
 			if (error.response.status === 404) {
-				errorMessage = 'No se encontró el endpoint. Verifica que el servidor esté corriendo en http://localhost:8888';
+				errorMessage = 'No se encontró el endpoint. Verifica que el servidor esté corriendo en ' + API_BASE_URL;
 			} else if (error.response.status === 500) {
 				errorMessage = 'Error interno del servidor. Revisa los logs del backend.';
 			}
@@ -356,22 +341,6 @@ function retryLoadData() {
 	// Ejemplo: intentar 3 veces con delay exponencial
 }
 
-//// Function to load data
-//async function loadData() {
-//	try {
-//		const response = await fetch('./datos_completos.json');
-//		const data = await response.json();
-//		
-//		eventsData = data.events;
-//		countriesGeoJSON = data.countriesGeoJSON;
-//		
-//		document.getElementById('loading').style.display = 'none';
-//		displayEventsOnMap();
-//		
-//	} catch (error) {
-//		console.error('Error loading data:', error);
-//	}
-//}
 
 // Function to switch between main views (events/speakers)
 function switchView(viewType) {
@@ -663,7 +632,6 @@ function createPopupContent(locationName, events) {
 }
 
 /**
- * IMPORTANTE: Agregar esta función DESPUÉS de createPopupContent
  * Adjunta event listeners a los botones del popup
  */
 function attachPopupButtonListeners(popupElement, eventsData) {

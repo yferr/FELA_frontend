@@ -1,9 +1,14 @@
+
+import axios from 'axios';
+
 /**
  * API Module - Wrapper para todas las llamadas HTTP al backend Django
- * ✅ CORREGIDO: CSRF token dinámico en cada petición
+ * CSRF token dinámico en cada petición
  */
 
 const API_BASE_URL = 'http://localhost:8888';
+//const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api';
+
 
 /**
  * Obtener token CSRF de las cookies
@@ -24,7 +29,7 @@ function getCookie(name) {
 }
 
 /**
- * ✅ CORREGIDO: Función que se llama dinámicamente en cada petición
+ * Función que se llama dinámicamente en cada petición
  * Configuración de axios con credenciales y CSRF
  */
 function getAxiosConfig() {
@@ -96,7 +101,7 @@ function handleAPIError(error, customMessage = 'Error en la operación') {
 
 export const AuthAPI = {
     /**
-     * ✅ CORREGIDO: Obtener token CSRF y esperar respuesta
+     * Obtener token CSRF y esperar respuesta
      */
     async getCSRFToken() {
         try {
@@ -118,7 +123,7 @@ export const AuthAPI = {
     },
 
     /**
-     * ✅ CORREGIDO: Login con CSRF token
+     * Login con CSRF token
      */
     async login(username, password) {
         try {
@@ -152,7 +157,7 @@ export const AuthAPI = {
     },
 
     /**
-     * ✅ CORREGIDO: Logout con CSRF token
+     * Logout con CSRF token
      */
     async logout() {
         try {

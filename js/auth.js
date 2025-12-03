@@ -114,58 +114,7 @@ export function initLoginPage() {
  * ====================================
  */
 
-/*async function handleLogin(e) {
-    e.preventDefault();
-    
-    const submitBtn = document.getElementById('login-submit-btn');
-    const alertDiv = document.getElementById('login-alert');
-    
-    // Obtener datos del formulario
-    const username = document.getElementById('login-username').value.trim();
-    const password = document.getElementById('login-password').value;
-    const remember = document.getElementById('remember-me').checked;
 
-    // Validación básica
-    if (!username || !password) {
-        showAlert(alertDiv, 'Por favor completa todos los campos', 'error');
-        return;
-    }
-
-    // Deshabilitar botón
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="loading-spinner"></span> Iniciando sesión...';
-
-    // ⭐ OBTENER TOKEN CSRF PRIMERO
-    await AuthAPI.getCSRFToken();
-
-    // Llamar API
-    const result = await AuthAPI.login(username, password);
-
-    if (result.success) {
-        // Guardar credenciales si está marcado "recordar"
-        if (remember) {
-            saveCredentials(username, password);
-        } else {
-            clearSavedCredentials();
-        }
-
-        // Guardar usuario
-        currentUser = result.data.user;
-
-        // Mostrar mensaje de éxito
-        showAlert(alertDiv, 'Login exitoso. Redirigiendo...', 'success');
-
-        // Redirigir después de 1 segundo
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 1000);
-    } else {
-        // Mostrar error
-        showAlert(alertDiv, result.error, 'error');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Iniciar Sesión';
-    }
-}*/
 async function handleLogin(e) {
     e.preventDefault();
     

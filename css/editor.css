@@ -1,6 +1,4 @@
-/* ====================================
-   ESTILOS PARA PÁGINA DE LOGIN
-   ==================================== */
+/* ESTILOS PARA PÁGINA DE LOGIN */
 
 .login-body {
     background: linear-gradient(135deg, #080668 0%, #1a0b8e 100%);
@@ -208,9 +206,7 @@
     border: 1px solid #bee5eb;
 }
 
-/* ====================================
-   ESTILOS PARA EDITOR PANEL (index.html)
-   ==================================== */
+/* ESTILOS PARA EDITOR PANEL (index.html) */
 
 .editor-panel {
     position: fixed;
@@ -569,9 +565,8 @@
     .auth-card {
         padding: 25px;
     }
-}/* ====================================
-   ESTILOS PARA PÁGINA DE LOGIN
-   ==================================== */
+}
+/* ESTILOS PARA PÁGINA DE LOGIN */
 
 .login-body {
     background: linear-gradient(135deg, #080668 0%, #1a0b8e 100%);
@@ -779,9 +774,7 @@
     border: 1px solid #bee5eb;
 }
 
-/* ====================================
-   ESTILOS PARA EDITOR PANEL (index.html)
-   ==================================== */
+/* ESTILOS PARA EDITOR PANEL (index.html) */
 
 .editor-panel {
     position: fixed;
@@ -1143,13 +1136,10 @@
 }
 
 /**
- * AGREGAR AL editor.css EXISTENTE
  * Estilos para el sistema de pestañas
  */
 
-/* ====================================
-   PESTAÑAS DEL EDITOR
-   ==================================== */
+/* PESTAÑAS DEL EDITOR*/
 
 .editor-tabs {
     display: flex;
@@ -1212,9 +1202,7 @@
     }
 }
 
-/* ====================================
-   OPCIONES DE AGREGAR
-   ==================================== */
+/* OPCIONES DE AGREGAR*/
 
 .add-options {
     display: flex;
@@ -1257,9 +1245,7 @@
     line-height: 1.4;
 }
 
-/* ====================================
-   BOTONES DE ACCIÓN EN POPUPS
-   ==================================== */
+/*  BOTONES DE ACCIÓN EN POPUPS*/
 
 .action-buttons-container {
     display: flex;
@@ -1300,9 +1286,7 @@
     background: #f0f0f0;
 }
 
-/* ====================================
-   RESPONSIVE
-   ==================================== */
+/* RESPONSIVE */
 
 @media (max-width: 768px) {
     .editor-tabs {
@@ -1335,14 +1319,8 @@
     }
 }
 
-/**
- * AGREGAR AL editor.css EXISTENTE
- * Estilos para el sistema de pestañas
- */
-
-/* ====================================
-   PESTAÑAS DEL EDITOR
-   ==================================== */
+/*
+   PESTAÑAS DEL EDITOR */
 
 .editor-tabs {
     display: flex;
@@ -1405,9 +1383,7 @@
     }
 }
 
-/* ====================================
-   OPCIONES DE AGREGAR
-   ==================================== */
+/* OPCIONES DE AGREGAR*/
 
 .add-options {
     display: flex;
@@ -1450,9 +1426,7 @@
     line-height: 1.4;
 }
 
-/* ====================================
-   BOTONES DE ACCIÓN EN POPUPS
-   ==================================== */
+/* BOTONES DE ACCIÓN EN POPUPS */
 
 .action-buttons-container {
     display: flex;
@@ -1493,9 +1467,7 @@
     background: #f0f0f0;
 }
 
-/* ====================================
-   RESPONSIVE
-   ==================================== */
+/*   RESPONSIVE*/
 
 @media (max-width: 768px) {
     .editor-tabs {
@@ -1528,9 +1500,7 @@
     }
 }
 
-/* ====================================
-   INDICADOR DE SPEAKER EXISTENTE
-   ==================================== */
+/* INDICADOR DE SPEAKER EXISTENTE*/
 
 .speaker-status-indicator {
     display: block;
@@ -1550,9 +1520,7 @@
 .speaker-row input:disabled::placeholder {
     color: #999;
 }
-/* ====================================
-   INDICADORES DE ESTADO DE PAÍS
-   ==================================== */
+/*    INDICADORES DE ESTADO DE PAÍS */
 
 .country-status-indicator {
     display: block;

@@ -6,8 +6,8 @@ import axios from 'axios';
  * CSRF token dinámico en cada petición
  */
 
-const API_BASE_URL = 'http://localhost:8888';
-//const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api';
+//const API_BASE_URL = 'http://localhost:8888';
+const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api';
 
 
 /**

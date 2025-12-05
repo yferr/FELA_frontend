@@ -2,9 +2,9 @@
  * Auth Module - Sistema de autenticación
  */
 
-import { AuthAPI } from './api.js';
+import { AuthAPI } from './api-npm.js';
 import { updateHelpButtonVisibility } from './help.js';
-//import axios from 'axios';
+import axios from 'axios';
 
 // Estado global del usuario
 let currentUser = null;
@@ -117,7 +117,7 @@ export function initLoginPage() {
  */
 
 
-export async function handleLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
     
     const submitBtn = document.getElementById('login-submit-btn');
@@ -192,7 +192,7 @@ export async function handleLogin(e) {
  * ====================================
  */
 
-export async function handleRegister(e) {
+async function handleRegister(e) {
     e.preventDefault();
     
     const submitBtn = document.getElementById('register-submit-btn');
@@ -337,7 +337,7 @@ export async function initAuthButton() {
 /**
  * Manejar logout
  */
-export async function handleLogout() {
+async function handleLogout() {
     const confirmLogout = confirm('¿Estás seguro de que deseas cerrar sesión?');
     
     if (confirmLogout) {

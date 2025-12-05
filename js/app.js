@@ -2,10 +2,11 @@ import axios from 'axios';
 // Leaflet
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { initAuthButton } from './auth.js';
+import { initAuthButton } from './auth-npm.js';
 import { initEditor } from './editor.js';
 import { loadPendingUsers } from './admin.js';
 import { initHelp } from './help.js';
+import { getApiBaseUrlApp } from './settings.js';
 // Bootstrap
 //import 'bootstrap/dist/css/bootstrap.min.css';
 //import 'bootstrap/dist/js/bootstrap.bundle.min.js';
@@ -31,7 +32,7 @@ window.agenciesLayer = null;
 
 // Configuración de la API
 //const API_BASE_URL = 'http://localhost:8888/FELA';
-const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api/FELA';
+const API_BASE_URL = getApiBaseUrlApp();
 
 // Main Menu switching
 

@@ -1,3 +1,6 @@
+@import url('./admin.css');
+@import url('./help.css');
+
 body {
 	margin: 0;
 	padding: 0;
@@ -428,5 +431,3 @@ h4, h5 {
 
 /* IMPORT DEL CSS DE ADMINISTRACIÓN */
 
-@import url('./admin.css');
-@import url('./help.css');

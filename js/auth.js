@@ -3,6 +3,7 @@
  */
 
 import { AuthAPI } from './api.js';
+import { updateHelpButtonVisibility } from './help.js';
 
 // Estado global del usuario
 let currentUser = null;
@@ -273,6 +274,7 @@ export async function initAuthButton() {
     const authButton = document.getElementById('auth-button');
     const authButtonText = document.getElementById('auth-button-text');
     const editorPanel = document.getElementById('editor-panel');
+    const superuserMenuItem = document.getElementById('superuser-menu-item');
 
     // Verificar sesión actual
     const isAuthenticated = await checkSession();
@@ -281,6 +283,13 @@ export async function initAuthButton() {
         // Usuario autenticado
         authButtonText.textContent = 'Logout';
         authButton.onclick = handleLogout;
+
+         // Mostrar pestaña de superusuario si es superuser
+        if (currentUser.is_superuser && superuserMenuItem) {
+            superuserMenuItem.style.display = 'block';
+        }
+
+        updateHelpButtonVisibility();
 
         // Verificar permisos
         if (currentUser.is_approved) {
@@ -316,6 +325,11 @@ export async function initAuthButton() {
         if (editorPanel) {
             editorPanel.style.display = 'none';
         }
+
+        if (superuserMenuItem) {
+            superuserMenuItem.style.display = 'none';
+        }
+        updateHelpButtonVisibility();
     }
 }
 

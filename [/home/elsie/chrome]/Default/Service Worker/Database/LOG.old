@@ -1,3 +1,2 @@
-2025/12/03-02:06:02.956 6d79 Reusing MANIFEST /home/elsie/frontend/[/home/elsie/chrome]/Default/Service Worker/Database/MANIFEST-000001
-2025/12/03-02:06:02.956 6d79 Recovering log #3
-2025/12/03-02:06:02.956 6d79 Reusing old log /home/elsie/frontend/[/home/elsie/chrome]/Default/Service Worker/Database/000003.log 
+2025/12/05-03:01:56.171 20e7d Creating DB /home/elsie/frontend/[/home/elsie/chrome]/Default/Service Worker/Database__tmp_for_rebuild since it was missing.
+2025/12/05-03:01:56.191 20e7d Reusing MANIFEST /home/elsie/frontend/[/home/elsie/chrome]/Default/Service Worker/Database__tmp_for_rebuild/MANIFEST-000001

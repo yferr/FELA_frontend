@@ -1,3 +1,2 @@
-2025/12/03-02:06:03.255 7 Reusing MANIFEST /home/elsie/frontend/[/home/elsie/chrome]/Default/Session Storage/MANIFEST-000001
-2025/12/03-02:06:03.256 7 Recovering log #3
-2025/12/03-02:06:03.257 7 Reusing old log /home/elsie/frontend/[/home/elsie/chrome]/Default/Session Storage/000003.log 
+2025/12/05-03:01:56.715 7 Creating DB /home/elsie/frontend/[/home/elsie/chrome]/Default/Session Storage__tmp_for_rebuild since it was missing.
+2025/12/05-03:01:56.751 7 Reusing MANIFEST /home/elsie/frontend/[/home/elsie/chrome]/Default/Session Storage__tmp_for_rebuild/MANIFEST-000001

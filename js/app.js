@@ -4,7 +4,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { initAuthButton } from './auth.js';
 import { initEditor } from './editor.js';
-
+import { loadPendingUsers } from './admin.js';
+import { initHelp } from './help.js';
 // Bootstrap
 //import 'bootstrap/dist/css/bootstrap.min.css';
 //import 'bootstrap/dist/js/bootstrap.bundle.min.js';
@@ -38,10 +39,10 @@ const API_BASE_URL = 'http://localhost:8888/FELA';
 // Main Menu switching con validación
 document.querySelectorAll('.menu-item').forEach(button => {
   button.addEventListener('click', () => {
-    // ✅ VALIDAR: Ignorar botón de auth que no tiene data-section
+    // VALIDAR: Ignorar botón de auth que no tiene data-section
     if (!button.dataset.section) {
-      console.log('🔘 Botón sin data-section (auth), ignorando cambio de sección');
-      return;
+    	console.log('🔘 Botón sin data-section (auth), ignorando cambio de sección');
+    	return;
     }
     
     document.querySelectorAll('.menu-item').forEach(btn => btn.classList.remove('active'));
@@ -51,20 +52,25 @@ document.querySelectorAll('.menu-item').forEach(button => {
     const sectionId = `${button.dataset.section}-container`;
     const targetSection = document.getElementById(sectionId);
     
-    // ✅ VALIDAR: Verificar que la sección existe
+    // VALIDAR: Verificar que la sección existe
     if (targetSection) {
-      targetSection.classList.add('visible');
+    	targetSection.classList.add('visible');
+
+		// Si se abre la sección de superusuario, cargar usuarios pendientes
+    	if (button.dataset.section === 'superuser') {
+    	  	loadPendingUsers();
+    	}  
     } else {
       console.error(`❌ Sección no encontrada: ${sectionId}`);
     }
 
     const controlsContainer = document.querySelector('.controls-container');
     if (controlsContainer) {
-      if (button.dataset.section === 'map') {
-        controlsContainer.style.display = 'block';
-      } else {
-        controlsContainer.style.display = 'none';
-      }
+    	if (button.dataset.section === 'map') {
+    	  	controlsContainer.style.display = 'block';
+    	} else {
+    	  	controlsContainer.style.display = 'none';
+    	}
     }
   });
 });
@@ -1219,6 +1225,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 	
 	// Inicializar editor (solo si está autenticado)
 	initEditor();
+
+	// Inicializar sistema de ayuda
+	initHelp();
 });
 
 window.filterBy = filterBy;

@@ -4,9 +4,9 @@
     <title>Divulgación del FELA</title>
     <meta charset="UTF-8">
     <link rel="stylesheet" type="text/css" href="./css/bootstrap.css">
-    <!--<link rel="stylesheet" type="text/css" href="./css/all.css">-->
     <link rel="stylesheet" type="text/css" href="./css/app.css">
     <link rel="stylesheet" type="text/css" href="./css/editor.css">
+    <link rel="stylesheet" type="text/css" href="./css/help.css">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
@@ -21,6 +21,10 @@
         <button class="menu-item" data-section="map">Mapa</button>
         <button class="menu-item" data-section="help">Ayuda</button>
         <button class="menu-item" data-section="about">Acerca de</button>
+        <!-- Pestaña de Superusuario (solo visible si es superuser) -->
+        <button class="menu-item" id="superuser-menu-item" data-section="superuser" style="display: none;">
+            Administrador 
+        </button>
         <!-- Botón de Login/Logout dinámico -->
         <button class="menu-item login-btn" id="auth-button">
             <span id="auth-button-text">Log in</span>
@@ -37,7 +41,8 @@
         <!-- Map Container -->
         <div id="map-container" class="section visible">
             <div id="map">
-                <!-- Controles de filtros (existente) -->
+                <button id="help-button" title="¿Necesitas ayuda?">ℹ️</button>
+                <!-- Controles de filtros -->
                 <div class="controls-container"></div>
                 <div class="position-absolute top-1 end-0 m-3 z-3">
                     <div class="btn-group-vertical">
@@ -80,7 +85,7 @@
                 </div>
             </div>
 
-            <!-- ✨ NUEVO: Contenedor de Edición (solo visible si está autenticado) -->
+            <!-- Contenedor de Edición (solo visible si está autenticado) -->
             <div id="editor-panel" class="editor-panel" style="display: none;">
                 <div class="editor-header">
                     <h3>📝 Editor de Eventos</h3>
@@ -92,7 +97,7 @@
             </div>
         </div>
 
-        <!-- Home Container (existente) -->
+        <!-- Home Container -->
         <div id="home-container" class="section">
             <div class="fila">
                 <img src="./imgs/nova.png" class="laterali">
@@ -121,7 +126,7 @@
             </div>
         </div>
 
-        <!-- Help Container (existente) -->
+        <!-- Help Container -->
         <div id="help-container" class="section">
             <div class="fila">
                 <img src="./imgs/nova.png" class="laterali">
@@ -142,7 +147,7 @@
             <p>El punto visualizado en medio del Atlántico corresponde a eventos que se realizaron en modalidad en línea.</p>
         </div>
 
-        <!-- About Container (existente) -->
+        <!-- About Container  -->
         <div id="about-container" class="section">
             <div class="fila">
                 <img src="./imgs/nova.png" class="laterali">
@@ -174,6 +179,299 @@
             </div>
         </div>
     </div>
+    <!-- Superuser Container (solo visible para superusuarios) -->
+    <div id="superuser-container" class="section">
+        <div class="admin-header">
+            <h1>
+                🔑 Panel de Superusuario
+            </h1>
+            <p>Gestión de usuarios y permisos del sistema FELA</p>
+        </div>
+
+        <div class="admin-section">
+            <div class="section-header">
+                <h2>
+                    👥 Usuarios Pendientes de Aprobación
+                    <span class="pending-badge">
+                        <span id="pending-count">0</span> pendientes
+                    </span>
+                </h2>
+                <button class="btn-refresh" onclick="handleRefreshPendingUsers()">
+                    🔄 Actualizar
+                </button>
+            </div>
+
+            <div id="admin-loading" style="display: none;">
+                Cargando usuarios...
+            </div>
+
+            <div id="pending-users-container">
+                <!-- Los usuarios se cargan dinámicamente aquí -->
+            </div>
+        </div>
+
+        <div class="admin-section">
+            <div class="section-header">
+                <h2>ℹ️ Información</h2>
+            </div>
+            <div class="alert-inline info">
+                <h4>📧 Notificaciones por Email</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Cuando un usuario se registra, recibirás un email automático con sus datos</li>
+                    <li>Al aprobar un usuario aquí, se le enviará un email de confirmación automáticamente</li>
+                    <li>Los usuarios rechazados NO podrán iniciar sesión</li>
+                </ul>
+
+                <h4 style="margin-top: 20px;">🔗 Panel de Django Admin</h4>
+                <p>También puedes gestionar usuarios desde el panel de administración de Django:</p>
+                <!--"https://gisserver.car.upv.es/fela_api/admin/core/customuser/"    ---use in prod  -->
+                <a href= "http://localhost:8888/admin/" target="_blank" class="btn btn-outline-secondary" style="display: inline-block; margin-top: 10px;">
+                    Abrir Django Admin →                    
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    
+    <!--  Modal de Ayuda -->
+    <div id="help-overlay"></div>
+    <div id="help-modal">
+        <div class="help-modal-header">
+            <h2>📚 Manual de Uso</h2>
+            <button class="help-close-btn" id="close-help-modal">×</button>
+        </div>
+        <div class="help-modal-content">
+            <!-- Introducción -->
+            <div class="help-intro">
+                <h3>¡Bienvenido al Aplicativo de divulgación del FELA!</h3>
+                <p>Este manual te guiará paso a paso en la creación y gestión de eventos, presentaciones y ponentes.</p>
+            </div>
+
+            <!-- Acordeón de Ayuda -->
+            <div class="accordion">
+                
+                <!--SECCIÓN 1: CREAR EVENTO COMPLETO-->
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <span class="accordion-title">🆕 Crear Evento Completo</span>
+                        <span class="accordion-icon">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <p><strong>Usa esta opción cuando:</strong> Necesites crear un evento nuevo desde cero con todas sus presentaciones y ponentes.</p>
+
+                            <!-- Paso 1: Información del Evento -->
+                            <div class="help-section">
+                                <h4>📅 Paso 1: Información del Evento</h4>
+                                <p>Completa los datos básicos del evento:</p>
+                                <ul>
+                                    <li><strong>País y Ciudad *</strong>: Escribe para buscar. El sistema mostrará sugerencias de la base de datos local y de Nominatim (OpenStreetMap). Las coordenadas se completarán automáticamente.</li>
+                                    <li><strong>Fecha</strong>: Formato libre (ej: "15-20 Marzo 2025")</li>
+                                    <li><strong>Año *</strong>: Año del evento (obligatorio)</li>
+                                    <li><strong>Tipo</strong>: Ej: Conferencia, Workshop, Webinar</li>
+                                    <li><strong>Título del evento *</strong>: Nombre completo del evento</li>
+                                    <li><strong>Organismos organizadores</strong>: Escribe el nombre y presiona "Agregar" o Enter. Puedes agregar múltiples organismos.</li>
+                                </ul>
+                                
+                                <div class="help-note">
+                                    <strong>💡 Tip:</strong> Los campos marcados con * son obligatorios.
+                                </div>
+                            </div>
+
+                            <!-- Paso 2: Presentaciones -->
+                            <div class="help-section">
+                                <h4>📋 Paso 2: Agregar Presentaciones</h4>
+                                <p>Cada evento debe tener al menos una presentación:</p>
+                                <ol>
+                                    <li><strong>Título de la presentación *</strong>: Nombre de la charla o ponencia</li>
+                                    <li><strong>Idiomas</strong>: Escribe el idioma y presiona "+" o Enter (puedes agregar varios)</li>
+                                    <li><strong>URL del documento</strong>: Link al PDF, video o recurso relacionado</li>
+                                    <li><strong>Observaciones</strong>: Notas adicionales sobre la presentación</li>
+                                </ol>
+                                
+                                <p>Para agregar más presentaciones, haz clic en <strong>"➕ Agregar Presentación"</strong>.</p>
+                            </div>
+
+                            <!-- Paso 3: Ponentes -->
+                            <div class="help-section">
+                                <h4>👥 Paso 3: Agregar Ponentes</h4>
+                                <p>Cada presentación debe tener al menos un ponente:</p>
+                                <ul>
+                                    <li><strong>Nombre del ponente *</strong>: Escribe el nombre. Si el ponente ya existe en la base de datos, el sistema autocompletará los datos.</li>
+                                    <li><strong>País *</strong>: Escribe para buscar. El sistema validará el país automáticamente.</li>
+                                    <li><strong>Organismo</strong>: Institución u organización del ponente</li>
+                                </ul>
+                                
+                                <p>Para agregar más ponentes a una presentación, haz clic en <strong>"➕ Agregar Ponente"</strong>.</p>
+                                
+                                <div class="help-tip">
+                                    <strong>💡 Autocompletado inteligente:</strong> Si escribes el nombre de un ponente que ya existe, el sistema llenará automáticamente su país y organismo. Los campos se bloquearán para evitar duplicados.
+                                </div>
+                            </div>
+
+                            <!-- Finalizar -->
+                            <div class="help-section">
+                                <h4>✅ Finalizar</h4>
+                                <p>Una vez completados todos los datos, haz clic en <strong>"💾 Guardar Evento"</strong>. El sistema creará:</p>
+                                <ul>
+                                    <li>El evento con sus coordenadas geográficas</li>
+                                    <li>Todas las presentaciones asociadas</li>
+                                    <li>Todos los ponentes (nuevos o existentes)</li>
+                                    <li>Las relaciones entre presentaciones y ponentes</li>
+                                </ul>
+                                
+                                <div class="help-success">
+                                    <strong>✅ Éxito:</strong> El evento aparecerá inmediatamente en el mapa y podrás visualizarlo haciendo clic en el marcador correspondiente.
+                                </div>
+                            </div>
+                            <div class="help-section">
+                                <h4>IMPORTANTE</h4>
+                                <p>Al crear un evento nuevo completo, solo se puede añadir una presentación. De haber más de una presentación proceder con la opción <strong>"➕ Agregar Presentación a Evento Existente"</strong> luego de haber creado y guardado el evento completo.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!--SECCIÓN 2: AGREGAR PRESENTACIÓN-->
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <span class="accordion-title">➕ Agregar Presentación a Evento Existente</span>
+                        <span class="accordion-icon">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <p><strong>Usa esta opción cuando:</strong> Ya existe un evento y quieres agregar una nueva presentación con sus ponentes.</p>
+
+                            <div class="help-section">
+                                <h4>🔍 Seleccionar Evento</h4>
+                                <p>Escribe el título del evento en el campo de búsqueda. El sistema mostrará sugerencias de eventos existentes con su año y país.</p>
+                                <p>También puedes acceder directamente desde el mapa haciendo clic en <strong>"➕ Nueva Presentación"</strong> en el popup de un evento.</p>
+                            </div>
+
+                            <div class="help-section">
+                                <h4>📝 Datos de la Presentación</h4>
+                                <p>Completa los campos igual que al crear un evento completo:</p>
+                                <ul>
+                                    <li><strong>Título *</strong></li>
+                                    <li><strong>Idiomas</strong></li>
+                                    <li><strong>URL del documento</strong></li>
+                                    <li><strong>Observaciones</strong></li>
+                                </ul>
+                            </div>
+
+                            <div class="help-section">
+                                <h4>👤 Agregar Ponentes</h4>
+                                <p>Agrega uno o más ponentes a la presentación. El sistema validará automáticamente los países y detectará ponentes existentes.</p>
+                            </div>
+
+                            <div class="help-note">
+                                <strong>💡 Importante:</strong> La presentación NO puede tener el mismo título que otra presentación del mismo evento.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!--SECCIÓN 3: AGREGAR PONENTE-->
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <span class="accordion-title">👤 Agregar Ponente a Presentación Existente</span>
+                        <span class="accordion-icon">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <p><strong>Usa esta opción cuando:</strong> Ya existe una presentación y quieres agregar un ponente adicional.</p>
+
+                            <div class="help-section">
+                                <h4>🔍 Seleccionar Presentación</h4>
+                                <p>Escribe el título de la presentación. El sistema mostrará sugerencias con el título completo, el evento al que pertenece y los ponentes actuales.</p>
+                            </div>
+
+                            <div class="help-section">
+                                <h4>📝 Datos del Ponente</h4>
+                                <ul>
+                                    <li><strong>Nombre *</strong>: Escribe el nombre completo. Si el ponente ya existe, el sistema autocompletará sus datos.</li>
+                                    <li><strong>País *</strong>: El sistema validará el país automáticamente al seleccionarlo del menú desplegable.</li>
+                                    <li><strong>Organismo</strong>: Institución u organización (opcional)</li>
+                                </ul>
+                            </div>
+
+                            <div class="help-tip">
+                                <strong>🔍 Búsqueda inteligente:</strong> Si escribes un nombre que ya existe en la base de datos, el sistema lo detectará y llenará automáticamente los campos de país y organismo para evitar duplicados.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 4: TIPS IMPORTANTES -->
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <span class="accordion-title">💡 Tips y Buenas Prácticas</span>
+                        <span class="accordion-icon">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            
+                            <!-- Autocompletado -->
+                            <div class="help-section">
+                                <h4>🔍 Uso del Autocompletado</h4>
+                                <p>El sistema cuenta con autocompletado inteligente para evitar duplicados:</p>
+                                <ul>
+                                    <li><strong>Países y Ciudades</strong>: Busca primero en la base de datos local, luego en Nominatim (OpenStreetMap)</li>
+                                    <li><strong>Organismos</strong>: Muestra organismos ya registrados</li>
+                                    <li><strong>Ponentes</strong>: Detecta ponentes existentes por nombre y país</li>
+                                </ul>
+                                
+                                <div class="help-tip">
+                                    <strong>💡 Tip:</strong> Siempre revisa las sugerencias del autocompletado antes de crear registros nuevos.
+                                </div>
+                            </div>
+                            <!-- Validación de Países -->
+                            <div class="help-section">
+                                <h4>🌍 Validación de Países</h4>
+                                <p>Para los ponentes, el país debe ser validado:</p>
+                                <ul>
+                                    <li>Al escribir, el sistema buscará el país en la base de datos</li>
+                                    <li>Si no existe, puedes seleccionarlo del menú desplegable (Nominatim)</li>
+                                    <li>El país se validará automáticamente al perder el foco del campo</li>
+                                    <li>Un indicador visual mostrará si el país está validado ✅ o pendiente ❓</li>
+                                </ul>
+
+                                <div class="help-warning">
+                                    <strong>⚠️ Importante:</strong> Si un país no aparece en el menú desplegable, selecciona el país más cercano geográficamente o contacta al administrador.
+                                </div>
+                            </div>
+
+                            <!-- Evitar Duplicados -->
+                            <div class="help-section">
+                                <h4>🚫 Cómo Evitar Duplicados</h4>
+                                <ol>
+                                    <li><strong>Eventos</strong>: Busca primero si el evento ya existe antes de crear uno nuevo</li>
+                                    <li><strong>Presentaciones</strong>: No uses títulos idénticos dentro del mismo evento</li>
+                                    <li><strong>Ponentes</strong>: Escribe el nombre completo y espera las sugerencias del autocompletado</li>
+                                    <li><strong>Organismos</strong>: Usa las sugerencias del sistema para mantener nombres consistentes</li>
+                                </ol>
+                            </div>
+
+                            <!-- Qué Hacer si Falla -->
+                            <div class="help-section">
+                                <h4>❌ Qué Hacer si Algo Falla</h4>
+                                <ul>
+                                    <li><strong>Error de validación</strong>: Revisa que todos los campos obligatorios (*) estén completos</li>
+                                    <li><strong>País no validado</strong>: Selecciona el país del menú desplegable en lugar de escribirlo manualmente</li>
+                                    <li><strong>Duplicado</strong>: El sistema te avisará si estás intentando crear algo que ya existe</li>
+                                    <li><strong>Error inesperado</strong>: Recarga la página y vuelve a intentarlo. Si persiste, contacta al administrador</li>
+                                </ul>
+
+                                <div class="help-note">
+                                    <strong>💾 Tip:</strong> Los datos no se guardan hasta que hagas clic en el botón "Guardar". Puedes cancelar en cualquier momento.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Scripts -->
 	<!--<script language="javascript" type="module" src="./js/axios.min.js"></script>-->
@@ -183,6 +481,8 @@
     <script language="javascript" type="module" src="./js/autocomplete.js"></script>
     <script language="javascript" type="module" src="./js/forms.js"></script>
     <script language="javascript" type="module" src="./js/editor.js"></script>
+    <script language="javascript" type="module" src="./js/admin.js"></script>
+    <script language="javascript" type="module" src="./js/help.js"></script>
     <script language="javascript" type="module" src="./js/app.js"></script>
 </body>
 </html>

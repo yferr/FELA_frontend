@@ -213,8 +213,8 @@ function addMapInstructions() {
     instructions.className = 'alert-inline info';
     instructions.style.cssText = `
         position: absolute;
-        top: 70px;
-        left: 10px;
+        top: 25%;
+        left:40%;
         z-index: 1000;
         max-width: 300px;
         font-size: 0.85rem;

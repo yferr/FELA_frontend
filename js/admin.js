@@ -4,9 +4,12 @@
 
 import { AuthAPI } from './api.js';
 import axios from 'axios';
+import {getApiBaseUrl} from './settings.js';
 
 //const API_BASE_URL = 'http://localhost:8888';
-const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api';
+//const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api';
+
+var API_BASE_URL=getApiBaseUrl();
 
 /**
  * Obtener token CSRF de las cookies

@@ -2,7 +2,7 @@ import axios from 'axios';
 // Leaflet
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { initAuthButton } from './auth-npm.js';
+import { initAuthButton } from './auth.js';
 import { initEditor } from './editor.js';
 import { loadPendingUsers } from './admin.js';
 import { initHelp } from './help.js';

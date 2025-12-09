@@ -1,5 +1,6 @@
 
-//import axios from 'axios';
+import axios from 'axios';
+import {getApiBaseUrl} from './settings.js';
 
 /**
  * API Module - Wrapper para todas las llamadas HTTP al backend Django
@@ -7,8 +8,9 @@
  */
 
 //const API_BASE_URL = 'http://localhost:8888';
-const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api';
+//const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api';
 
+var API_BASE_URL=getApiBaseUrl();
 
 /**
  * Obtener token CSRF de las cookies

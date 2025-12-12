@@ -129,3 +129,81 @@ function initAccordion() {
  * Función global para cerrar modal (llamada desde HTML)
  */
 window.closeHelpModal = closeHelpModal;
+
+/**
+ * Help Module - Sistema de ayuda con acordeón (sin modal)
+ */
+
+/**
+ * Inicializar funcionalidad de acordeón en la sección de ayuda
+ */
+export function initHelpAccordion() {
+    const accordionHeaders = document.querySelectorAll('.help-accordion-header');
+    
+    if (accordionHeaders.length === 0) {
+        console.warn('No se encontraron headers de acordeón en la página');
+        return;
+    }
+    
+    accordionHeaders.forEach(header => {
+        header.addEventListener('click', () => {
+            const accordionItem = header.parentElement;
+            const isActive = accordionItem.classList.contains('active');
+            
+            // Cerrar todos los demás items
+            document.querySelectorAll('.help-accordion-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Toggle el item clickeado
+            if (!isActive) {
+                accordionItem.classList.add('active');
+            }
+        });
+    });
+    
+    // Abrir la primera sección por defecto
+    const firstItem = document.querySelector('.help-accordion-item');
+    if (firstItem) {
+        firstItem.classList.add('active');
+    }
+    
+    console.log('✅ Acordeón de ayuda inicializado');
+}
+
+/**
+ * Función auxiliar para mostrar/ocultar secciones del acordeón
+ * (Por si se necesita controlar programáticamente)
+ */
+export function toggleAccordionItem(index) {
+    const items = document.querySelectorAll('.help-accordion-item');
+    
+    if (items[index]) {
+        const isActive = items[index].classList.contains('active');
+        
+        // Cerrar todos
+        items.forEach(item => item.classList.remove('active'));
+        
+        // Abrir el seleccionado si no estaba activo
+        if (!isActive) {
+            items[index].classList.add('active');
+        }
+    }
+}
+
+/**
+ * Función para abrir una sección específica del acordeón por su título
+ */
+export function openAccordionByTitle(titleText) {
+    const items = document.querySelectorAll('.help-accordion-item');
+    
+    items.forEach(item => {
+        const title = item.querySelector('.help-accordion-title');
+        if (title && title.textContent.includes(titleText)) {
+            // Cerrar todos primero
+            items.forEach(i => i.classList.remove('active'));
+            // Abrir el encontrado
+            item.classList.add('active');
+        }
+    });
+}

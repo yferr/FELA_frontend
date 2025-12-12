@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { initAuthButton } from './auth.js';
 import { initEditor } from './editor.js';
 import { loadPendingUsers } from './admin.js';
-import { initHelp } from './help.js';
+import { initHelpAccordion } from './help.js';;
 import { getApiBaseUrlApp } from './settings.js';
 // Bootstrap
 //import 'bootstrap/dist/css/bootstrap.min.css';
@@ -33,9 +33,6 @@ window.agenciesLayer = null;
 // Configuración de la API
 //const API_BASE_URL = 'http://localhost:8888/FELA';
 const API_BASE_URL = getApiBaseUrlApp();
-
-// Main Menu switching
-
 
 // Main Menu switching con validación
 document.querySelectorAll('.menu-item').forEach(button => {
@@ -80,7 +77,11 @@ document.querySelectorAll('.menu-item').forEach(button => {
 //Initialize the map
 function initMap() {
 	// Crear mapa y asignarlo a variable global
-	window.map = L.map('map').setView([40.0, 0.0], 3);
+	window.map = L.map('map',{
+		minZoom: 2,  // Evita zoom out excesivo
+        maxBounds: [[-90, -180], [90, 180]],  // Limita el desplazamiento
+        maxBoundsViscosity: 1.0
+	}).setView([40.0, 0.0], 3);
 	map = window.map; // Mantener compatibilidad
 	
 	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -588,12 +589,13 @@ function createPopupContent(locationName, events) {
                             style="flex: 1;">
                         ➕ Nueva Presentación
                     </button>
-                    <button class="btn btn-outline-secondary edit-event-btn" 
+
+                    <!--<button class="btn btn-outline-secondary edit-event-btn" 
                             data-event-id="${eventUniqueId}"
                             data-event-title="${event.eventTitle.replace(/"/g, '&quot;')}"
                             style="flex: 1;">
                         ✏️ Editar Evento
-                    </button>
+                    </button>-->
                 </div>
         `;
         
@@ -1228,7 +1230,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 	initEditor();
 
 	// Inicializar sistema de ayuda
-	initHelp();
+	initHelpAccordion();
 });
 
 window.filterBy = filterBy;

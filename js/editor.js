@@ -46,7 +46,7 @@ function renderTabsStructure(container) {
         <div class="editor-tabs">
             <button class="tab-btn active" data-tab="create">🆕 Crear Evento</button>
             <button class="tab-btn" data-tab="add">➕ Agregar Elemento</button>
-            <button class="tab-btn" data-tab="edit">✏️ Editar</button>
+            <!--<button class="tab-btn" data-tab="edit">✏️ Editar</button>-->
         </div>
 
         <div class="tab-content">
@@ -73,7 +73,7 @@ function renderTabsStructure(container) {
                 </div>
             </div>
             
-            <!-- Pestaña Editar -->
+            <!-- Pestaña Editar 
             <div class="tab-pane" id="edit-tab">
                 <div class="alert-inline info">
                     <h4>🚧 Funcionalidad en desarrollo</h4>
@@ -85,7 +85,7 @@ function renderTabsStructure(container) {
                         <li>Agregar ponentes a presentaciones existentes</li>
                     </ul>
                 </div>
-            </div>
+            </div> -->
         </div>
     `;
 

@@ -881,9 +881,9 @@ function generatePresentationHTML(index) {
         <div class="presentation-card" data-presentation-index="${index}">
             <div class="presentation-header">
                 <span class="presentation-number">Presentación #${index + 1}</span>
-                <button type="button" class="remove-presentation" data-index="${index}">
+                <!--<button type="button" class="remove-presentation" data-index="${index}">
                     🗑️ Eliminar
-                </button>
+                </button>-->
             </div>
 
             <div class="form-grid">

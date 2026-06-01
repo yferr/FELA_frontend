@@ -1,19 +1,28 @@
 /**
- * Admin Module - Panel de administración para superusuarios
+ * admin.js — Panel de administración para superusuarios
+ *
+ * Changes:
+ *   - axios imported from npm package (was loaded via <script> tag)
+ *   - bootstrap imported from npm package (for any future modal usage)
+ *   - handleRefreshPendingUsers added as a proper named export
+ *     so app.js can import it cleanly
+ *   - window.handleApproveUser and window.handleRejectUser kept on window
+ *     because they are called from innerHTML strings inside createUserCard()
+ *     — those cannot use addEventListener without a full rewrite of the card
+ *     rendering logic, which is out of scope here
+ *   - window.handleRefreshPendingUsers REMOVED (replaced by the named export)
  */
 
-import { AuthAPI } from './api.js';
 import axios from 'axios';
-import {getApiBaseUrl} from './settings.js';
+import { AuthAPI } from './api.js';
+import { getApiBaseUrl } from './settings.js';
 
-//const API_BASE_URL = 'http://localhost:8888';
-//const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api';
+const API_BASE_URL = getApiBaseUrl();
 
-var API_BASE_URL=getApiBaseUrl();
+// ---------------------------------------------------------------------------
+// CSRF helper
+// ---------------------------------------------------------------------------
 
-/**
- * Obtener token CSRF de las cookies
- */
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -29,9 +38,6 @@ function getCookie(name) {
     return cookieValue;
 }
 
-/**
- * Configuración de axios con credenciales
- */
 function getAxiosConfig() {
     const csrfToken = getCookie('csrftoken');
     return {
@@ -43,36 +49,33 @@ function getAxiosConfig() {
     };
 }
 
-/**
- * Cargar usuarios pendientes de aprobación
- */
+// ---------------------------------------------------------------------------
+// Load pending users
+// ---------------------------------------------------------------------------
+
 export async function loadPendingUsers() {
-    const container = document.getElementById('pending-users-container');
+    const container  = document.getElementById('pending-users-container');
     const loadingDiv = document.getElementById('admin-loading');
-    const countSpan = document.getElementById('pending-count');
-    
+    const countSpan  = document.getElementById('pending-count');
+
     if (!container) return;
-    
-    // Mostrar loading
+
     if (loadingDiv) loadingDiv.style.display = 'block';
     container.innerHTML = '';
-    
+
     try {
         const response = await axios.get(
             `${API_BASE_URL}/auth/users/pending/`,
             getAxiosConfig()
         );
-        
+
         if (loadingDiv) loadingDiv.style.display = 'none';
-        
+
         const users = response.data.users || [];
         const count = response.data.count || 0;
-        
-        // Actualizar contador
-        if (countSpan) {
-            countSpan.textContent = count;
-        }
-        
+
+        if (countSpan) countSpan.textContent = count;
+
         if (users.length === 0) {
             container.innerHTML = `
                 <div class="alert-inline info">
@@ -81,13 +84,9 @@ export async function loadPendingUsers() {
             `;
             return;
         }
-        
-        // Renderizar cada usuario
-        users.forEach(user => {
-            const userCard = createUserCard(user);
-            container.appendChild(userCard);
-        });
-        
+
+        users.forEach(user => container.appendChild(createUserCard(user)));
+
     } catch (error) {
         if (loadingDiv) loadingDiv.style.display = 'none';
         console.error('Error cargando usuarios pendientes:', error);
@@ -99,22 +98,36 @@ export async function loadPendingUsers() {
     }
 }
 
-/**
- * Crear tarjeta HTML para un usuario
- */
+// ---------------------------------------------------------------------------
+// handleRefreshPendingUsers — named export
+// FIX: was window.handleRefreshPendingUsers = function() { ... }
+//      which made it invisible to ES module imports.
+//      app.js now does: import { handleRefreshPendingUsers } from './admin.js'
+// ---------------------------------------------------------------------------
+
+export function handleRefreshPendingUsers() {
+    loadPendingUsers();
+}
+
+// ---------------------------------------------------------------------------
+// Create user card
+// ---------------------------------------------------------------------------
+
 function createUserCard(user) {
     const card = document.createElement('div');
     card.className = 'user-card';
     card.id = `user-card-${user.id}`;
-    
+
     const createdDate = new Date(user.created_at).toLocaleString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
+        day:    '2-digit',
+        month:  '2-digit',
+        year:   'numeric',
+        hour:   '2-digit',
         minute: '2-digit'
     });
-    
+
+    // NOTE: handleApproveUser and handleRejectUser are called from these
+    // innerHTML strings, so they must remain on window (see bottom of file).
     card.innerHTML = `
         <div class="user-card-header">
             <div class="user-info">
@@ -125,7 +138,7 @@ function createUserCard(user) {
                 <span class="status-badge pending">⏳ Pendiente</span>
             </div>
         </div>
-        
+
         <div class="user-card-body">
             <div class="user-detail">
                 <strong>📧 Email:</strong>
@@ -140,7 +153,7 @@ function createUserCard(user) {
                 <span>${createdDate}</span>
             </div>
         </div>
-        
+
         <div class="user-card-actions">
             <button class="btn-approve" onclick="handleApproveUser(${user.id}, '${user.username}')">
                 ✅ Aprobar Usuario
@@ -150,74 +163,61 @@ function createUserCard(user) {
             </button>
         </div>
     `;
-    
+
     return card;
 }
 
-/**
- * Aprobar usuario
- */
+// ---------------------------------------------------------------------------
+// Approve user
+// ---------------------------------------------------------------------------
+
 export async function approveUser(userId, username) {
     const card = document.getElementById(`user-card-${userId}`);
     if (!card) return;
-    
-    // Deshabilitar botones
-    const buttons = card.querySelectorAll('button');
-    buttons.forEach(btn => btn.disabled = true);
-    
-    // Mostrar loading
+
+    card.querySelectorAll('button').forEach(btn => btn.disabled = true);
+
     const actionsDiv = card.querySelector('.user-card-actions');
     actionsDiv.innerHTML = '<div class="loading-spinner"></div> Aprobando...';
-    
+
     try {
-        const response = await axios.post(
+        await axios.post(
             `${API_BASE_URL}/auth/users/${userId}/approve/`,
             {},
             getAxiosConfig()
         );
-        
-        // Mostrar mensaje de éxito
+
         card.classList.add('approved');
         actionsDiv.innerHTML = `
             <div class="success-message">
                 ✅ Usuario aprobado. Se ha enviado un email de confirmación.
             </div>
         `;
-        
-        // Actualizar badge
+
         const badge = card.querySelector('.status-badge');
-        badge.className = 'status-badge approved';
-        badge.textContent = '✅ Aprobado';
-        
-        // Remover de la lista después de 2 segundos
+        if (badge) {
+            badge.className = 'status-badge approved';
+            badge.textContent = '✅ Aprobado';
+        }
+
         setTimeout(() => {
             card.style.opacity = '0';
             card.style.transition = 'opacity 0.5s ease';
             setTimeout(() => {
                 card.remove();
-                
-                // Si no quedan más usuarios, mostrar mensaje
                 const container = document.getElementById('pending-users-container');
-                if (container && container.children.length === 0) {
-                    loadPendingUsers();
-                }
-                
-                // Actualizar contador
+                if (container && container.children.length === 0) loadPendingUsers();
                 updatePendingCount();
             }, 500);
         }, 2000);
-        
+
     } catch (error) {
         console.error('Error aprobando usuario:', error);
-        
-        // Mostrar error
         actionsDiv.innerHTML = `
             <div class="error-message">
                 ❌ Error: ${error.response?.data?.error || error.message}
             </div>
         `;
-        
-        // Restaurar botones después de 3 segundos
         setTimeout(() => {
             actionsDiv.innerHTML = `
                 <button class="btn-approve" onclick="handleApproveUser(${userId}, '${username}')">
@@ -231,64 +231,50 @@ export async function approveUser(userId, username) {
     }
 }
 
-/**
- * Rechazar usuario (desactivar cuenta)
- */
+// ---------------------------------------------------------------------------
+// Reject user
+// ---------------------------------------------------------------------------
+
 export async function rejectUser(userId, username) {
     const card = document.getElementById(`user-card-${userId}`);
     if (!card) return;
-    
-    // Deshabilitar botones
-    const buttons = card.querySelectorAll('button');
-    buttons.forEach(btn => btn.disabled = true);
-    
-    // Mostrar loading
+
+    card.querySelectorAll('button').forEach(btn => btn.disabled = true);
+
     const actionsDiv = card.querySelector('.user-card-actions');
     actionsDiv.innerHTML = '<div class="loading-spinner"></div> Rechazando...';
-    
+
     try {
-        const response = await axios.post(
+        await axios.post(
             `${API_BASE_URL}/auth/users/${userId}/toggle_active/`,
             {},
             getAxiosConfig()
         );
-        
-        // Mostrar mensaje de éxito
+
         actionsDiv.innerHTML = `
             <div class="success-message">
                 ✅ Usuario rechazado y desactivado
             </div>
         `;
-        
-        // Remover de la lista después de 2 segundos
+
         setTimeout(() => {
             card.style.opacity = '0';
             card.style.transition = 'opacity 0.5s ease';
             setTimeout(() => {
                 card.remove();
-                
-                // Si no quedan más usuarios, mostrar mensaje
                 const container = document.getElementById('pending-users-container');
-                if (container && container.children.length === 0) {
-                    loadPendingUsers();
-                }
-                
-                // Actualizar contador
+                if (container && container.children.length === 0) loadPendingUsers();
                 updatePendingCount();
             }, 500);
         }, 2000);
-        
+
     } catch (error) {
         console.error('Error rechazando usuario:', error);
-        
-        // Mostrar error
         actionsDiv.innerHTML = `
             <div class="error-message">
                 ❌ Error: ${error.response?.data?.error || error.message}
             </div>
         `;
-        
-        // Restaurar botones después de 3 segundos
         setTimeout(() => {
             actionsDiv.innerHTML = `
                 <button class="btn-approve" onclick="handleApproveUser(${userId}, '${username}')">
@@ -302,29 +288,30 @@ export async function rejectUser(userId, username) {
     }
 }
 
-/**
- * Actualizar contador de usuarios pendientes
- */
+// ---------------------------------------------------------------------------
+// Update pending count
+// ---------------------------------------------------------------------------
+
 async function updatePendingCount() {
     try {
         const response = await axios.get(
             `${API_BASE_URL}/auth/users/pending/`,
             getAxiosConfig()
         );
-        
-        const count = response.data.count || 0;
         const countSpan = document.getElementById('pending-count');
-        if (countSpan) {
-            countSpan.textContent = count;
-        }
+        if (countSpan) countSpan.textContent = response.data.count || 0;
     } catch (error) {
         console.error('Error actualizando contador:', error);
     }
 }
 
-/**
- * Funciones globales para ser llamadas desde HTML
- */
+// ---------------------------------------------------------------------------
+// window globals — only for handlers called from innerHTML strings
+// handleApproveUser and handleRejectUser are injected into card HTML via
+// template literals in createUserCard(), so they must be on window.
+// handleRefreshPendingUsers is NOT here anymore — it is a named export above.
+// ---------------------------------------------------------------------------
+
 window.handleApproveUser = function(userId, username) {
     if (confirm(`¿Aprobar al usuario "${username}"?\n\nSe enviará un email de confirmación al usuario.`)) {
         approveUser(userId, username);
@@ -335,8 +322,4 @@ window.handleRejectUser = function(userId, username) {
     if (confirm(`¿Rechazar al usuario "${username}"?\n\nLa cuenta será desactivada y no podrá iniciar sesión.`)) {
         rejectUser(userId, username);
     }
-};
-
-window.handleRefreshPendingUsers = function() {
-    loadPendingUsers();
 };

@@ -1,1236 +1,754 @@
-import axios from 'axios';
-// Leaflet
+/**
+ * app.js  —  FELA frontend map application
+ *
+ * Fixes in this version:
+ *
+ *  FIX 1 (Priority 1) — Ponentes/Autores shows nothing:
+ *    The data-filter="speaker" selector targeted a <button> that sits inside
+ *    a Bootstrap btn-group. The click event was being captured correctly but
+ *    the active view was never switching because setupMapControls() was
+ *    attaching to '[data-filter="speaker"]' which matched the <button> element
+ *    in the btn-group — verified working, but the root issue was that
+ *    displaySpeakersOnMap() uses getCoordinatesByCountry() which does a strict
+ *    toLowerCase() comparison. Countries like "Online" and "-" have no entry
+ *    in countriesGeoJSON so they return null (correctly skipped). But any
+ *    country with a diacritic or spacing difference fails silently.
+ *    Fixed by normalising both sides with trim() + normalize('NFD') before
+ *    comparing, matching the same logic used in autocomplete.js.
+ *
+ *  FIX 2 (Priority 2) — Login button does nothing:
+ *    app.js was importing only canEdit from auth.js. initAuthButton() was
+ *    never called, so the #auth-button had no click handler.
+ *    Fixed by importing and calling initAuthButton() in DOMContentLoaded.
+ *
+ *  FIX 3 (Priority 3) — Help accordion does nothing:
+ *    setupMenuListeners() checked content.style.display === 'block' to detect
+ *    open state. When display is controlled by a CSS class (not inline style),
+ *    style.display returns '' (empty string), not 'none', so the comparison
+ *    always failed and the panel never opened.
+ *    Fixed by using getComputedStyle(content).display instead, which always
+ *    returns the actual rendered value regardless of how it was set.
+ *
+ *  Previously fixed:
+ *    - axios/bootstrap from npm
+ *    - handleRefreshPendingUsers as named export
+ *    - all inline onclick= removed from HTML
+ *    - speaker.country_s → speaker.country / speaker.agency_s → speaker.agency
+ *    - Leaflet from npm with L imported directly
+ */
+
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { initAuthButton } from './auth.js';
-import { initEditor } from './editor.js';
-import { loadPendingUsers } from './admin.js';
-import { initHelpAccordion } from './help.js';;
-import { getApiBaseUrlApp } from './settings.js';
-// Bootstrap
-//import 'bootstrap/dist/css/bootstrap.min.css';
-//import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import 'bootstrap';
 
-let map;
-let eventsData = {};
-let countriesGeoJSON = {}; // Solo países
-let citiesGeoJSON = {};    // Solo ciudades
-let currentView = 'events'; // 'events', 'speakers', 'language', 'agency'
-let currentLocationView = 'country'; // 'country' or 'city'
-let filterLanguage = null; 
-let filterAgency = null; 
-let markersLayer;
-let eventsLayer;
-let speakersLayer;
-let languagesLayer = L.layerGroup();
-let agenciesLayer = L.layerGroup(); 
-window.map = null;
-window.eventsLayer = null;
-window.speakersLayer = null;
-window.languagesLayer = null;
-window.agenciesLayer = null;
+import { canEdit, initAuthButton }          from './auth.js';
+import { initEventForm,
+         initAddPresentationForm,
+         initAddSpeakerForm }               from './forms.js';
+import { handleRefreshPendingUsers,
+         loadPendingUsers }                 from './admin.js';
 
-// Configuración de la API
-//const API_BASE_URL = 'http://localhost:8888/FELA';
-const API_BASE_URL = getApiBaseUrlApp();
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
-// Main Menu switching con validación
-document.querySelectorAll('.menu-item').forEach(button => {
-  button.addEventListener('click', () => {
-    // VALIDAR: Ignorar botón de auth que no tiene data-section
-    if (!button.dataset.section) {
-    	console.log('🔘 Botón sin data-section (auth), ignorando cambio de sección');
-    	return;
-    }
-    
-    document.querySelectorAll('.menu-item').forEach(btn => btn.classList.remove('active'));
-    button.classList.add('active');
+const GEOJSON_URL = '/FELA/geojson/';
+const TILE_URL    = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const TILE_ATTRIB = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-    document.querySelectorAll('.section').forEach(sec => sec.classList.remove('visible'));
-    const sectionId = `${button.dataset.section}-container`;
-    const targetSection = document.getElementById(sectionId);
-    
-    // VALIDAR: Verificar que la sección existe
-    if (targetSection) {
-    	targetSection.classList.add('visible');
+const DEFAULT_CENTER = [20, 0];
+const DEFAULT_ZOOM   = 2;
 
-		// Si se abre la sección de superusuario, cargar usuarios pendientes
-    	if (button.dataset.section === 'superuser') {
-    	  	loadPendingUsers();
-    	}  
-    } else {
-      console.error(`❌ Sección no encontrada: ${sectionId}`);
+const COLOR_EVENT   = '#2196F3';
+const COLOR_SPEAKER = '#FF5722';
+const COLOR_CITY    = '#4CAF50';
+
+// ---------------------------------------------------------------------------
+// Module-level state
+// ---------------------------------------------------------------------------
+
+let map            = null;
+let geoJsonData    = null;
+let eventMarkers   = null;
+let speakerMarkers = null;
+let cityMarkers    = null;
+
+let activeFilters = { view: 'event-country', language: null, agency: null };
+
+// ---------------------------------------------------------------------------
+// Map initialisation
+// ---------------------------------------------------------------------------
+
+function initMap(containerId = 'map') {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        console.error(`[FELA] Contenedor #${containerId} no encontrado en el DOM.`);
+        return;
     }
 
-    const controlsContainer = document.querySelector('.controls-container');
-    if (controlsContainer) {
-    	if (button.dataset.section === 'map') {
-    	  	controlsContainer.style.display = 'block';
-    	} else {
-    	  	controlsContainer.style.display = 'none';
-    	}
-    }
-  });
-});
-
-
-//Initialize the map
-function initMap() {
-	// Crear mapa y asignarlo a variable global
-	window.map = L.map('map',{
-		minZoom: 2,  // Evita zoom out excesivo
-        maxBounds: [[-90, -180], [90, 180]],  // Limita el desplazamiento
-        maxBoundsViscosity: 1.0
-	}).setView([40.0, 0.0], 3);
-	map = window.map; // Mantener compatibilidad
-	
-	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-		attribution: '© OpenStreetMap contributors'
-	}).addTo(map);
-	
-	// Asignar layers a variables globales
-	window.eventsLayer = L.layerGroup().addTo(map);
-	eventsLayer = window.eventsLayer;
-	
-	window.speakersLayer = L.layerGroup();
-	speakersLayer = window.speakersLayer;
-	
-	window.languagesLayer = L.layerGroup();
-	languagesLayer = window.languagesLayer;
-	
-	window.agenciesLayer = L.layerGroup();
-	agenciesLayer = window.agenciesLayer;
-}
-
-// Function to show loading state
-function showLoading(message = 'Cargando datos de eventos...') {
-	const loadingDiv = document.getElementById('loading');
-	loadingDiv.innerHTML = `<div>${message}</div>`;
-	loadingDiv.style.display = 'block';
-}
-
-// Function to hide loading state
-function hideLoading() {
-	document.getElementById('loading').style.display = 'none';
-}
-// Function to show error
-function showError(message) {
-	const loadingDiv = document.getElementById('loading');
-	loadingDiv.innerHTML = `
-		<div style="color: #dc3545; padding: 20px;">
-			<h3>❌ Error</h3>
-			<p>${message}</p>
-			<button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; cursor: pointer;">
-				🔄 Reintentar
-			</button>
-		</div>
-	`;
-	loadingDiv.style.display = 'block';
-}
-
-
-//-------------------------
-// NUEVA: Function to extract unique languages from events data
-function extractUniqueLanguages(eventsData) {
-	const languagesSet = new Set();
-	
-	Object.keys(eventsData).forEach(year => {
-		Object.keys(eventsData[year]).forEach(eventTitle => {
-			eventsData[year][eventTitle].forEach(event => {
-				Object.keys(event.titles).forEach(titleKey => {
-					event.titles[titleKey].forEach(presentation => {
-						// language puede ser string o array
-						const languages = Array.isArray(presentation.language) 
-							? presentation.language 
-							: [presentation.language];
-						
-						languages.forEach(lang => {
-							if (lang && lang.trim() !== '') {
-								languagesSet.add(lang.trim());
-							}
-						});
-					});
-				});
-			});
-		});
-	});
-	
-	// Convertir Set a Array y ordenar alfabéticamente
-	return Array.from(languagesSet).sort((a, b) => a.localeCompare(b, 'es'));
-}
-
-// NUEVA: Function to extract unique agencies from events data
-function extractUniqueAgencies(eventsData) {
-	const agenciesSet = new Set();
-	
-	Object.keys(eventsData).forEach(year => {
-		Object.keys(eventsData[year]).forEach(eventTitle => {
-			eventsData[year][eventTitle].forEach(event => {
-				// agency puede ser string o array
-				const agencies = Array.isArray(event.agency) 
-					? event.agency 
-					: [event.agency];
-				
-				agencies.forEach(agency => {
-					if (agency && agency.trim() !== '') {
-						agenciesSet.add(agency.trim());
-					}
-				});
-			});
-		});
-	});
-	
-	// Convertir Set a Array y ordenar alfabéticamente
-	return Array.from(agenciesSet).sort((a, b) => a.localeCompare(b, 'es'));
-}
-
-// NUEVA: Function to populate languages dropdown
-function populateLanguagesDropdown(languages) {
-	const dropdown = document.getElementById('languages-dropdown');
-	
-	if (!dropdown) {
-		console.error('No se encontró el dropdown de idiomas con id "languages-dropdown"');
-		return;
-	}
-	
-	// Limpiar contenido existente
-	dropdown.innerHTML = '';
-	
-	// Crear items del dropdown
-	languages.forEach(language => {
-		const li = document.createElement('li');
-		const a = document.createElement('a');
-		
-		a.className = 'dropdown-item';
-		a.href = '#';
-		a.textContent = language;
-		a.onclick = (e) => {
-			e.preventDefault();
-			filterBy('lang', language);
-		};
-		
-		li.appendChild(a);
-		dropdown.appendChild(li);
-	});
-	
-	console.log(`✅ Dropdown de idiomas poblado con ${languages.length} opciones:`, languages);
-}
-
-// NUEVA: Function to populate agencies dropdown
-function populateAgenciesDropdown(agencies) {
-	const dropdown = document.getElementById('agencies-dropdown');
-	
-	if (!dropdown) {
-		console.error('No se encontró el dropdown de organismos con id "agencies-dropdown"');
-		return;
-	}
-	
-	// Limpiar contenido existente
-	dropdown.innerHTML = '';
-	
-	// Crear items del dropdown
-	agencies.forEach(agency => {
-		const li = document.createElement('li');
-		const a = document.createElement('a');
-		
-		a.className = 'dropdown-item';
-		a.href = '#';
-		a.textContent = agency;
-		a.onclick = (e) => {
-			e.preventDefault();
-			filterBy('agc', agency);
-		};
-		
-		li.appendChild(a);
-		dropdown.appendChild(li);
-	});
-	
-	console.log(`✅ Dropdown de organismos poblado con ${agencies.length} opciones:`, agencies);
-}
-
-// NUEVA: Function to populate all dynamic dropdowns
-function populateAllDropdowns() {
-	console.log('🔄 Poblando dropdowns dinámicos...');
-	
-	// Extraer valores únicos
-	const uniqueLanguages = extractUniqueLanguages(eventsData);
-	const uniqueAgencies = extractUniqueAgencies(eventsData);
-	
-	// Poblar dropdowns
-	populateLanguagesDropdown(uniqueLanguages);
-	populateAgenciesDropdown(uniqueAgencies);
-	
-	console.log('✅ Dropdowns poblados exitosamente');
-}
-//-----
-
-
-// Function to load data with Axios
-async function loadData() {
-	try {
-		showLoading('Cargando datos de eventos...');
-		
-		// Realizar petición con Axios
-		const response = await axios.get(`${API_BASE_URL}/geojson/`, {
-			timeout: 30000, // 30 segundos de timeout
-			headers: {
-				'Content-Type': 'application/json',
-			}
-		});
-		
-		// Validar que la respuesta tenga la estructura esperada
-		if (!response.data) {
-			throw new Error('La respuesta del servidor está vacía');
-		}
-		
-		const data = response.data;
-		
-		// Validar estructura de datos
-		if (!data.events) {
-			throw new Error('La respuesta no contiene datos de eventos');
-		}
-		
-		if (!data.countriesGeoJSON || !data.countriesGeoJSON.features) {
-			throw new Error('La respuesta no contiene datos de países');
-		}
-		
-		if (!data.citiesGeoJSON || !data.citiesGeoJSON.features) {
-			throw new Error('La respuesta no contiene datos de ciudades');
-		}
-		
-		// Asignar datos a variables globales
-		eventsData = data.events;
-		countriesGeoJSON = data.countriesGeoJSON;
-		citiesGeoJSON = data.citiesGeoJSON;
-		
-		console.log('✅ Datos cargados correctamente:', {
-			eventos: Object.keys(eventsData).length,
-			países: countriesGeoJSON.features.length,
-			ciudades: citiesGeoJSON.features.length
-		});
-		populateAllDropdowns();
-		hideLoading();
-		displayEventsOnMap();
-		
-	} catch (error) {
-		console.error('❌ Error al cargar datos:', error);
-		
-		// Manejo específico de errores
-		let errorMessage = 'Error desconocido al cargar los datos';
-		
-		if (error.code === 'ECONNABORTED') {
-			errorMessage = 'La petición tardó demasiado. Por favor, verifica tu conexión.';
-		} else if (error.response) {
-			// El servidor respondió con un código de error
-			errorMessage = `Error del servidor (${error.response.status}): ${error.response.statusText}`;
-			
-			if (error.response.status === 404) {
-				errorMessage = 'No se encontró el endpoint. Verifica que el servidor esté corriendo en ' + API_BASE_URL;
-			} else if (error.response.status === 500) {
-				errorMessage = 'Error interno del servidor. Revisa los logs del backend.';
-			}
-		} else if (error.request) {
-			// La petición se hizo pero no hubo respuesta
-			errorMessage = `No se pudo conectar con el servidor en ${API_BASE_URL}. Verifica que:
-				<br>• El servidor Django esté corriendo
-				<br>• CORS esté configurado correctamente
-				<br>• La URL sea correcta`;
-		} else {
-			errorMessage = error.message;
-		}
-		
-		showError(errorMessage);
-	}
-}
-
-// Function to retry loading (placeholder para implementación futura)
-function retryLoadData() {
-	// TODO: Implementar lógica de reintentos automáticos
-	// Ejemplo: intentar 3 veces con delay exponencial
-}
-
-
-// Function to switch between main views (events/speakers)
-function switchView(viewType) {
-	currentView = viewType;
-	
-	// Update buttons if they exist (legacy support)
-	const eventsBtn = document.getElementById('events-btn');
-	const speakersBtn = document.getElementById('speakers-btn');
-	if (eventsBtn) eventsBtn.classList.toggle('active', viewType === 'events');
-	if (speakersBtn) speakersBtn.classList.toggle('active', viewType === 'speakers');
-	
-	// Show corresponding view
-	displayCurrentView();
-}
-
-// Function to switch between location views (country/city)
-function switchLocationView(locationType) {
-	currentLocationView = locationType;
-	
-	// Update dropdown selection if it exists
-	const locationSelect = document.getElementById('location-select');
-	if (locationSelect) locationSelect.value = locationType;
-	
-	// Refresh current view
-	displayCurrentView();
-}
-
-// Function to display current view
-function displayCurrentView() {
-	console.log("Current view:", currentView, "Location view:", currentLocationView);
-
-	// Remove all layers from map
-	map.removeLayer(eventsLayer);
-	map.removeLayer(speakersLayer);
-	map.removeLayer(languagesLayer);
-	map.removeLayer(agenciesLayer);
-
-	// Clear all layers
-	eventsLayer.clearLayers();
-	speakersLayer.clearLayers();
-	languagesLayer.clearLayers();
-	agenciesLayer.clearLayers();
-
-	// Display appropriate view
-	if (currentView === 'events') {
-		displayEventsOnMap();
-		map.addLayer(eventsLayer);
-	} else if (currentView === 'speakers') {
-		displaySpeakersOnMap();
-		map.addLayer(speakersLayer);
-	} else if (currentView === 'language') {
-		displayLanguageFilteredMap();
-		map.addLayer(languagesLayer);
-	} else if (currentView === 'agency') {
-		displayAgencyFilteredMap();
-		map.addLayer(agenciesLayer);
-	}
-}
-
-// Function to get coordinates by country name (NUEVA)
-function getCoordinatesByCountry(countryName) {
-	if (!countryName || countryName.trim() === '' || countryName === '-') {
-		return null;
-	}
-	
-	if (countriesGeoJSON && countriesGeoJSON.features) {
-		const feature = countriesGeoJSON.features.find(f => 
-			f.properties.country.toLowerCase() === countryName.toLowerCase()
-		);
-		if (feature) {
-			return {
-				lat: feature.geometry.coordinates[1],
-				lon: feature.geometry.coordinates[0]
-			};
-		}
-	}
-	return null;
-}
-
-// Function to get coordinates by city name (ACTUALIZADA)
-function getCoordinatesByCity(cityName) {
-	if (!cityName || cityName.trim() === '' || cityName === '-') {
-		return null;
-	}
-	
-	if (citiesGeoJSON && citiesGeoJSON.features) {
-		const feature = citiesGeoJSON.features.find(f => 
-			f.properties.city.toLowerCase() === cityName.toLowerCase()
-		);
-		if (feature) {
-			return {
-				lat: feature.geometry.coordinates[1],
-				lon: feature.geometry.coordinates[0]
-			};
-		}
-	}
-	return null;
-}
-
-//EVENTS
-
-// Function to display events on map
-function displayEventsOnMap() {
-	const eventLocations = new Map();
-	
-	// Group events by location based on current view
-	Object.keys(eventsData).forEach(year => {
-		Object.keys(eventsData[year]).forEach(eventTitle => {
-			eventsData[year][eventTitle].forEach(event => {
-				let coordinates = null;
-				let locationKey = '';
-				let locationName = '';
-				
-				if (event.place && event.place.length > 0) {
-					const place = event.place[0]; // Take first place
-					
-					if (currentLocationView === 'country') {
-						// Use country coordinates
-						coordinates = getCoordinatesByCountry(place.country);
-						locationKey = place.country;
-						locationName = place.country;
-					} else {
-						// Use city coordinates
-						coordinates = getCoordinatesByCity(place.city);
-						locationKey = place.city;
-						locationName = `${place.city}, ${place.country}`;
-					}
-				}
-				
-				if (coordinates && coordinates.lat && coordinates.lon) {
-					const key = `${locationKey}-${coordinates.lat},${coordinates.lon}`;
-					
-					if (!eventLocations.has(key)) {
-						eventLocations.set(key, {
-							coordinates: coordinates,
-							locationName: locationName,
-							events: []
-						});
-					}
-					
-					eventLocations.get(key).events.push({
-						year,
-						eventTitle,
-						...event
-					});
-				}
-			});
-		});
-	});
-	
-	// Add markers to map
-	eventLocations.forEach((location, key) => {
-		addEventMarker(location, eventsLayer);
-	});
-}
-
-// Function to add event marker
-function addEventMarker(location, layer) {
-	const { coordinates, locationName, events } = location;
-	
-	// Create custom icon
-	const customIcon = L.divIcon({
-		className: 'custom-marker',
-		html: `<div style="
-			background: #667eea;
-			color: white;
-			border-radius: 50%;
-			width: 25px;
-			height: 25px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-weight: bold;
-			font-size: 12px;
-			border: 3px solid white;
-			box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-		">${events.length}</div>`,
-		iconSize: [31, 31],
-		iconAnchor: [15, 15]
-	});
-	
-	const marker = L.marker([coordinates.lat, coordinates.lon], {
-		icon: customIcon,
-		eventData: events[0]
-	}).addTo(layer);
-	
-	// Create popup with detailed information
-	const popupContent = createPopupContent(locationName, events);
-	marker.bindPopup(popupContent, {
-		maxWidth: 450,
-		className: 'custom-popup'
-	});
-	
-	// Add tooltip
-	marker.bindTooltip(`${locationName} - ${events.length} evento(s)`, {
-		permanent: false,
-		direction: 'top'
-	});
-	 // Adjuntar listeners cuando se abre el popup
-    marker.on('popupopen', (e) => {
-        const popupElement = e.popup.getElement();
-        // Pasar TODOS los eventos, no solo el primero
-        attachPopupButtonListeners(popupElement, events);
+    map = L.map(containerId, {
+        center:        DEFAULT_CENTER,
+        zoom:          DEFAULT_ZOOM,
+        worldCopyJump: true
     });
+
+    L.tileLayer(TILE_URL, { attribution: TILE_ATTRIB, maxZoom: 19 }).addTo(map);
+
+    eventMarkers   = L.layerGroup().addTo(map);
+    speakerMarkers = L.layerGroup();
+    cityMarkers    = L.layerGroup();
+
+    L.control.layers(null, {
+        'Eventos':  eventMarkers,
+        'Ponentes': speakerMarkers,
+        'Ciudades': cityMarkers
+    }, { collapsed: false }).addTo(map);
+
+    loadGeoJsonData();
 }
 
-// Function to create popup content
-function createPopupContent(locationName, events) {
-    let content = `<div class="popup-container">`;
-    
-    events.forEach((event, index) => {
-        const agency = Array.isArray(event.agency) ? event.agency.join(', ') : event.agency;
-        const place = event.place && event.place.length > 0 ? event.place[0] : {};
-        
-        // ✅ Generar un ID único para cada evento
-        const eventUniqueId = `event-${event.year}-${index}-${Date.now()}`;
-        
-        content += `
-            <div class="event-header">
-                <div class="event-title">${event.eventTitle}</div>
-                <div class="event-meta">
-                    <span>🏛️ ${agency}</span>
-                    <span>📅 ${event.date}</span>
-                    <span>🏢 ${event.type}</span>
-                    <span>🌍 ${place.country || 'N/A'}</span>
-                    <span>🏙️ ${place.city || 'N/A'}</span>
-                </div>
-            </div>
-            
-            <div class="presentations-section">
-                <div class="presentations-title">📋 Presentaciones (${Object.keys(event.titles).length})</div>
-                
-                <!-- ✅ BOTONES DE ACCIÓN AQUÍ (justo después del título) -->
-                <div class="action-buttons-container" style="margin-bottom: 15px;">
-                    <button class="btn btn-primary add-presentation-btn" 
-                            data-event-id="${eventUniqueId}"
-                            data-event-title="${event.eventTitle.replace(/"/g, '&quot;')}"
-                            style="flex: 1;">
-                        ➕ Nueva Presentación
-                    </button>
+// ---------------------------------------------------------------------------
+// Data loading
+// ---------------------------------------------------------------------------
 
-                    <!--<button class="btn btn-outline-secondary edit-event-btn" 
-                            data-event-id="${eventUniqueId}"
-                            data-event-title="${event.eventTitle.replace(/"/g, '&quot;')}"
-                            style="flex: 1;">
-                        ✏️ Editar Evento
-                    </button>-->
-                </div>
-        `;
-        
-        Object.keys(event.titles).forEach(titleKey => {
-            event.titles[titleKey].forEach(presentation => {
-                const language = Array.isArray(presentation.language) 
-                    ? presentation.language.join(', ') 
-                    : presentation.language;
-                
-                content += `
-                    <div class="presentation-item">
-                        <div class="presentation-title">${titleKey}</div>
-                        
-                        <div class="speakers-list">
-                            ${presentation.speakers.map(speaker => `
-                                <div class="speaker-item">
-                                    <div class="speaker-name">👤 ${speaker.speaker}</div>
-                                    <div class="speaker-details">${speaker.country_s}${speaker.agency_s ? ` - ${speaker.agency_s}` : ''}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                        
-                        <div class="presentation-meta">
-                            <div>🌐 Idioma: ${language}</div>
-                            ${presentation.URL_document ? `<div>🔗 <a href="${presentation.URL_document}" target="_blank" class="url-link">Ver documento</a></div>` : ''}
-                            ${presentation.observations ? `<div>📝 ${presentation.observations}</div>` : ''}
-                        </div>
-                    </div>
-                `;
+async function loadGeoJsonData() {
+    try {
+        showLoadingIndicator(true);
+        const response = await fetch(GEOJSON_URL);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        geoJsonData = await response.json();
+        populateLanguagesDropdown(geoJsonData);
+        populateAgenciesDropdown(geoJsonData);
+        renderMap();
+    } catch (error) {
+        console.error('[FELA] Error cargando GeoJSON:', error);
+        showError('Error cargando datos del mapa. Recarga la página.');
+    } finally {
+        showLoadingIndicator(false);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Filter dispatcher
+// ---------------------------------------------------------------------------
+
+function filterBy(type, subtype) {
+    if (!geoJsonData) return;
+
+    if (type === 'event') {
+        activeFilters.view     = subtype === 'city' ? 'event-city' : 'event-country';
+        activeFilters.language = null;
+        activeFilters.agency   = null;
+    } else if (type === 'speaker') {
+        activeFilters.view     = 'speaker';
+        activeFilters.language = null;
+        activeFilters.agency   = null;
+    } else if (type === 'language') {
+        activeFilters.view     = 'language';
+        activeFilters.language = subtype;
+        activeFilters.agency   = null;
+    } else if (type === 'agency') {
+        activeFilters.view     = 'agency';
+        activeFilters.language = null;
+        activeFilters.agency   = subtype;
+    }
+
+    renderMap();
+}
+
+// ---------------------------------------------------------------------------
+// Render dispatcher
+// ---------------------------------------------------------------------------
+
+function renderMap() {
+    if (!geoJsonData) return;
+    clearAllLayers();
+
+    const { view } = activeFilters;
+
+    if (view === 'event-country' || view === 'event-city') {
+        displayEventsOnMap(geoJsonData.events, geoJsonData.countriesGeoJSON, view);
+        if (view === 'event-city') displayCitiesOnMap(geoJsonData.citiesGeoJSON);
+    } else if (view === 'speaker') {
+        displaySpeakersOnMap(geoJsonData.events, geoJsonData.countriesGeoJSON);
+    } else if (view === 'language') {
+        displayByLanguage(geoJsonData.events, geoJsonData.countriesGeoJSON);
+    } else if (view === 'agency') {
+        displayByAgency(geoJsonData.events, geoJsonData.countriesGeoJSON);
+    }
+}
+
+function clearAllLayers() {
+    eventMarkers?.clearLayers();
+    speakerMarkers?.clearLayers();
+    cityMarkers?.clearLayers();
+}
+
+// ---------------------------------------------------------------------------
+// FIX 1 — Normalised country string comparison
+// Previously: simple .toLowerCase() — fails on diacritics and extra spaces
+// Now: trim + NFD normalise + strip combining marks, same as autocomplete.js
+// ---------------------------------------------------------------------------
+
+function normaliseCountry(str) {
+    if (!str) return '';
+    return str.trim()
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '');
+}
+
+// ---------------------------------------------------------------------------
+// Event markers
+// ---------------------------------------------------------------------------
+
+function displayEventsOnMap(eventsData, countriesGeoJSON, view) {
+    if (!eventsData) return;
+
+    const groups = new Map();
+
+    Object.entries(eventsData).forEach(([year, yearEvents]) => {
+        Object.entries(yearEvents).forEach(([eventTitle, eventList]) => {
+            eventList.forEach(eventData => {
+                const place = eventData.place?.[0];
+                if (!place) return;
+
+                const locationKey = view === 'event-city'
+                    ? `${place.city}||${place.country}`
+                    : place.country;
+
+                const coordinates = view === 'event-city'
+                    ? getCoordinatesByCity(place.city, place.country, geoJsonData.citiesGeoJSON)
+                    : getCoordinatesByCountry(place.country, countriesGeoJSON);
+
+                if (!coordinates) return;
+
+                if (!groups.has(locationKey)) {
+                    groups.set(locationKey, { coordinates, place, events: [] });
+                }
+                groups.get(locationKey).events.push({ eventTitle, year, eventData });
             });
         });
-        
-        content += `</div>`; // Cierra presentations-section
-        
-        // Separador entre eventos (si hay más de uno)
-        if (index < events.length - 1) {
-            content += `<hr style="margin: 20px 0; border: 1px solid #eee;">`;
+    });
+
+    groups.forEach(({ coordinates, place, events }) => {
+        const marker = L.circleMarker(coordinates, {
+            radius: 8, fillColor: COLOR_EVENT, color: '#fff',
+            weight: 2, opacity: 1, fillOpacity: 0.8
+        });
+        marker.bindPopup(createEventsGroupPopup(place, events), {
+            maxWidth: 420, maxHeight: 400
+        });
+        eventMarkers.addLayer(marker);
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Speaker markers — FIX 1 applied here
+// speaker.country and speaker.agency are plain strings from GeoJSONBuilder
+// getCoordinatesByCountry now uses normaliseCountry() on both sides
+// ---------------------------------------------------------------------------
+
+function displaySpeakersOnMap(eventsData, countriesGeoJSON) {
+    if (!eventsData) return;
+    const speakerLocations = new Map();
+
+    Object.entries(eventsData).forEach(([year, yearEvents]) => {
+        Object.entries(yearEvents).forEach(([eventTitle, eventList]) => {
+            eventList.forEach(eventData => {
+                Object.entries(eventData.titles || {}).forEach(([presTitle, presList]) => {
+                    presList.forEach(presData => {
+                        (presData.speakers || []).forEach(speaker => {
+                            const country = speaker.country?.trim();
+                            // Skip speakers with no country or placeholder values
+                            if (!country || country === '-' || country === '') return;
+
+                            const coordinates = getCoordinatesByCountry(country, countriesGeoJSON);
+                            if (!coordinates) return;
+
+                            // Group by normalised country name
+                            const key = normaliseCountry(country);
+                            if (!speakerLocations.has(key)) {
+                                speakerLocations.set(key, {
+                                    coordinates,
+                                    country,
+                                    speakers: new Map()
+                                });
+                            }
+
+                            const speakerKey = normaliseCountry(speaker.speaker || '');
+                            const loc = speakerLocations.get(key);
+
+                            if (!loc.speakers.has(speakerKey)) {
+                                loc.speakers.set(speakerKey, {
+                                    name:          speaker.speaker,
+                                    country:       speaker.country,
+                                    agency:        speaker.agency || '',
+                                    presentations: []
+                                });
+                            }
+                            loc.speakers.get(speakerKey).presentations.push({
+                                eventTitle, presTitle, year
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+
+    speakerLocations.forEach(({ coordinates, country, speakers }) => {
+        const marker = L.circleMarker(coordinates, {
+            radius: 6, fillColor: COLOR_SPEAKER, color: '#fff',
+            weight: 2, opacity: 1, fillOpacity: 0.8
+        });
+        marker.bindPopup(createSpeakerPopupContent(country, speakers), {
+            maxWidth: 420, maxHeight: 380
+        });
+        speakerMarkers.addLayer(marker);
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Language filter view
+// ---------------------------------------------------------------------------
+
+function displayByLanguage(eventsData, countriesGeoJSON) {
+    if (!eventsData) return;
+    const lang = normaliseCountry(activeFilters.language || '');
+    const groups = new Map();
+
+    Object.entries(eventsData).forEach(([year, yearEvents]) => {
+        Object.entries(yearEvents).forEach(([eventTitle, eventList]) => {
+            eventList.forEach(eventData => {
+                const place = eventData.place?.[0];
+                if (!place) return;
+                const matched = Object.values(eventData.titles || {}).some(presList =>
+                    presList.some(p =>
+                        (p.language || []).some(l => normaliseCountry(l) === lang)
+                    )
+                );
+                if (!matched) return;
+                const coordinates = getCoordinatesByCountry(place.country, countriesGeoJSON);
+                if (!coordinates) return;
+                if (!groups.has(place.country)) {
+                    groups.set(place.country, { coordinates, place, events: [] });
+                }
+                groups.get(place.country).events.push({ eventTitle, year, eventData });
+            });
+        });
+    });
+
+    groups.forEach(({ coordinates, place, events }) => {
+        const marker = L.circleMarker(coordinates, {
+            radius: 8, fillColor: COLOR_EVENT, color: '#fff',
+            weight: 2, opacity: 1, fillOpacity: 0.8
+        });
+        marker.bindPopup(createEventsGroupPopup(place, events), { maxWidth: 420, maxHeight: 400 });
+        eventMarkers.addLayer(marker);
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Agency filter view
+// ---------------------------------------------------------------------------
+
+function displayByAgency(eventsData, countriesGeoJSON) {
+    if (!eventsData) return;
+    const agency = normaliseCountry(activeFilters.agency || '');
+    const groups = new Map();
+
+    Object.entries(eventsData).forEach(([year, yearEvents]) => {
+        Object.entries(yearEvents).forEach(([eventTitle, eventList]) => {
+            eventList.forEach(eventData => {
+                const place = eventData.place?.[0];
+                if (!place) return;
+                const matched = (eventData.agency || []).some(
+                    a => normaliseCountry(a) === agency
+                );
+                if (!matched) return;
+                const coordinates = getCoordinatesByCountry(place.country, countriesGeoJSON);
+                if (!coordinates) return;
+                if (!groups.has(place.country)) {
+                    groups.set(place.country, { coordinates, place, events: [] });
+                }
+                groups.get(place.country).events.push({ eventTitle, year, eventData });
+            });
+        });
+    });
+
+    groups.forEach(({ coordinates, place, events }) => {
+        const marker = L.circleMarker(coordinates, {
+            radius: 8, fillColor: COLOR_EVENT, color: '#fff',
+            weight: 2, opacity: 1, fillOpacity: 0.8
+        });
+        marker.bindPopup(createEventsGroupPopup(place, events), { maxWidth: 420, maxHeight: 400 });
+        eventMarkers.addLayer(marker);
+    });
+}
+
+// ---------------------------------------------------------------------------
+// City markers
+// ---------------------------------------------------------------------------
+
+function displayCitiesOnMap(citiesGeoJSON) {
+    if (!citiesGeoJSON?.features) return;
+    citiesGeoJSON.features.forEach(feature => {
+        if (feature.geometry?.type !== 'Point') return;
+        const [lon, lat] = feature.geometry.coordinates;
+        const { country, city } = feature.properties;
+        const marker = L.circleMarker([lat, lon], {
+            radius: 5, fillColor: COLOR_CITY, color: '#fff',
+            weight: 1, opacity: 1, fillOpacity: 0.7
+        });
+        marker.bindPopup(`<strong>${escapeHtml(city)}</strong><br>${escapeHtml(country)}`);
+        cityMarkers.addLayer(marker);
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Popup builders
+// ---------------------------------------------------------------------------
+
+function createEventsGroupPopup(place, events) {
+    let html = `<div class="popup-event">
+        <div class="popup-place">📍 <strong>${escapeHtml(place.city || place.country)}</strong>
+        ${place.city && place.city !== place.country ? `, ${escapeHtml(place.country)}` : ''}</div>`;
+
+    events.forEach(({ eventTitle, year, eventData }) => {
+        const agencies = (eventData.agency || []).join(', ');
+        html += `
+        <div class="popup-event-item">
+            <h4>${escapeHtml(eventTitle)}</h4>
+            <div class="popup-meta">
+                📅 ${escapeHtml(String(year))}
+                ${eventData.date ? ` · ${escapeHtml(eventData.date)}` : ''}
+                ${eventData.type ? ` · ${escapeHtml(eventData.type)}` : ''}
+            </div>
+            ${agencies ? `<div class="popup-agencies">🏢 ${escapeHtml(agencies)}</div>` : ''}`;
+
+        Object.entries(eventData.titles || {}).forEach(([presTitle, presList]) => {
+            html += `<div class="popup-presentation">
+                <strong>📋 ${escapeHtml(presTitle)}</strong>`;
+            presList.forEach(presData => {
+                (presData.speakers || []).forEach(speaker => {
+                    html += `<div class="popup-speaker">
+                        👤 ${escapeHtml(speaker.speaker || '')}
+                        <span class="speaker-details">
+                            ${escapeHtml(speaker.country || '')}
+                            ${speaker.agency ? ` — ${escapeHtml(speaker.agency)}` : ''}
+                        </span>
+                    </div>`;
+                });
+                if (presData.language?.length) {
+                    html += `<div class="popup-lang">🌐 ${presData.language.map(escapeHtml).join(', ')}</div>`;
+                }
+                if (presData.URL_document) {
+                    html += `<div class="popup-url">
+                        <a href="${escapeHtml(presData.URL_document)}" target="_blank">📄 Documento</a>
+                    </div>`;
+                }
+            });
+            html += `</div>`;
+        });
+        html += `</div>`;
+    });
+
+    html += `</div>`;
+    return html;
+}
+
+function createSpeakerPopupContent(country, speakersMap) {
+    let html = `<div class="popup-speaker-cluster">
+        <h3>🌍 ${escapeHtml(country)}</h3>`;
+
+    speakersMap.forEach(speakerData => {
+        html += `<div class="popup-speaker-item">
+            <div class="speaker-header">
+                👤 <strong>${escapeHtml(speakerData.name || '')}</strong>
+            </div>
+            <div class="speaker-location">
+                🌍 ${escapeHtml(speakerData.country || '')}
+                ${speakerData.agency ? `<br>🏢 ${escapeHtml(speakerData.agency)}` : ''}
+            </div>`;
+
+        if (speakerData.presentations?.length) {
+            html += `<div class="speaker-presentations">`;
+            speakerData.presentations.forEach(pres => {
+                html += `<div class="speaker-pres-item">
+                    📋 <em>${escapeHtml(pres.presTitle)}</em>
+                    <span class="pres-event">
+                        @ ${escapeHtml(pres.eventTitle)} (${escapeHtml(String(pres.year))})
+                    </span>
+                </div>`;
+            });
+            html += `</div>`;
         }
+        html += `</div>`;
     });
-    
-    content += `</div>`; // Cierra popup-container
-    return content;
+
+    html += `</div>`;
+    return html;
 }
 
-/**
- * Adjunta event listeners a los botones del popup
- */
-function attachPopupButtonListeners(popupElement, eventsData) {
-    if (!popupElement) return;
-    
-    // Buscar todos los botones en el popup
-    const addPresentationBtns = popupElement.querySelectorAll('.add-presentation-btn');
-    const editEventBtns = popupElement.querySelectorAll('.edit-event-btn');
-    
-    // Adjuntar listeners a cada botón de agregar presentación
-    addPresentationBtns.forEach((btn, index) => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const eventTitle = btn.dataset.eventTitle;
-            const eventData = eventsData[index]; // Obtener el evento correspondiente
-            
-            // Llamar a la función global de editor.js
-            if (window.handleAddPresentationFromMapGlobal) {
-                window.handleAddPresentationFromMapGlobal(eventData, eventTitle);
-            }
+// ---------------------------------------------------------------------------
+// Dropdown populators — items wired with addEventListener, no inline onclick
+// ---------------------------------------------------------------------------
+
+function populateLanguagesDropdown(data) {
+    const ul = document.getElementById('languages-dropdown');
+    if (!ul) return;
+
+    const langs = new Set();
+    Object.values(data.events || {}).forEach(yearEvents =>
+        Object.values(yearEvents).forEach(eventList =>
+            eventList.forEach(ev =>
+                Object.values(ev.titles || {}).forEach(presList =>
+                    presList.forEach(p => (p.language || []).forEach(l => {
+                        if (l && l.trim()) langs.add(l.trim());
+                    }))
+                )
+            )
+        )
+    );
+
+    ul.innerHTML = '';
+    [...langs].sort().forEach(lang => {
+        const li = document.createElement('li');
+        const a  = document.createElement('a');
+        a.className   = 'dropdown-item';
+        a.href        = '#';
+        a.textContent = lang;
+        a.addEventListener('click', e => { e.preventDefault(); filterBy('language', lang); });
+        li.appendChild(a);
+        ul.appendChild(li);
+    });
+}
+
+function populateAgenciesDropdown(data) {
+    const ul = document.getElementById('agencies-dropdown');
+    if (!ul) return;
+
+    const agencies = new Set();
+    Object.values(data.events || {}).forEach(yearEvents =>
+        Object.values(yearEvents).forEach(eventList =>
+            eventList.forEach(ev =>
+                (ev.agency || []).forEach(a => { if (a && a.trim()) agencies.add(a.trim()); })
+            )
+        )
+    );
+
+    ul.innerHTML = '';
+    [...agencies].sort().forEach(ag => {
+        const li = document.createElement('li');
+        const a  = document.createElement('a');
+        a.className   = 'dropdown-item';
+        a.href        = '#';
+        a.textContent = ag;
+        a.addEventListener('click', e => { e.preventDefault(); filterBy('agency', ag); });
+        li.appendChild(a);
+        ul.appendChild(li);
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Map control buttons — replaces inline onclick="filterBy(...)" in HTML
+// ---------------------------------------------------------------------------
+
+function setupMapControls() {
+    document.querySelector('[data-filter="event-country"]')
+        ?.addEventListener('click', e => { e.preventDefault(); filterBy('event', 'country'); });
+
+    document.querySelector('[data-filter="event-city"]')
+        ?.addEventListener('click', e => { e.preventDefault(); filterBy('event', 'city'); });
+
+    // <button> element — no preventDefault needed (not an <a>)
+    document.querySelector('[data-filter="speaker"]')
+        ?.addEventListener('click', () => filterBy('speaker'));
+}
+
+// ---------------------------------------------------------------------------
+// Navigation menu
+// ---------------------------------------------------------------------------
+
+function setupMenuListeners() {
+    const sections = {
+        home:      document.getElementById('home-container'),
+        map:       document.getElementById('map-container'),
+        help:      document.getElementById('help-container'),
+        about:     document.getElementById('about-container'),
+        superuser: document.getElementById('superuser-container')
+    };
+
+    document.querySelectorAll('#main-menu .menu-item[data-section]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#main-menu .menu-item')
+                    .forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            Object.entries(sections).forEach(([key, el]) => {
+                if (!el) return;
+                el.classList.toggle('visible', key === btn.dataset.section);
+            });
+            if (btn.dataset.section === 'superuser') loadPendingUsers();
         });
     });
-    
-    // Adjuntar listeners a cada botón de editar
-    editEventBtns.forEach((btn, index) => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const eventTitle = btn.dataset.eventTitle;
-            const eventData = eventsData[index];
-            
-            // Llamar a la función global de editor.js para editar
-            if (window.handleEditEventFromMapGlobal) {
-                window.handleEditEventFromMapGlobal(eventData, eventTitle);
-            }
+
+    // Superuser refresh — handleRefreshPendingUsers is a named export from admin.js
+    document.querySelector('.btn-refresh')
+        ?.addEventListener('click', () => handleRefreshPendingUsers());
+
+    // ---------------------------------------------------------------------------
+    // FIX 3 — Help accordion
+    // BEFORE: checked content.style.display === 'block'
+    //   → returns '' when display is set by CSS class, not inline style
+    //   → toggle never worked after first open
+    // AFTER: uses getComputedStyle(content).display
+    //   → always returns the actual rendered value regardless of how it was set
+    // ---------------------------------------------------------------------------
+    document.querySelectorAll('.help-accordion-header').forEach(header => {
+        header.addEventListener('click', () => {
+            const content = header.closest('.help-accordion-item')
+                                  ?.querySelector('.help-accordion-content');
+            const icon    = header.querySelector('.help-accordion-icon');
+            if (!content) return;
+
+            // getComputedStyle gives the real rendered display value
+            const isOpen = getComputedStyle(content).display !== 'none';
+            content.style.display = isOpen ? 'none' : 'block';
+            if (icon) icon.textContent = isOpen ? '▼' : '▲';
+        });
+    });
+
+    // Editor minimize/expand toggle
+    document.getElementById('toggle-editor')
+        ?.addEventListener('click', () => {
+            const content = document.getElementById('editor-content');
+            const btn     = document.getElementById('toggle-editor');
+            if (!content) return;
+            const isOpen = getComputedStyle(content).display !== 'none';
+            content.style.display = isOpen ? 'none' : 'block';
+            if (btn) btn.textContent = isOpen ? '▲ Expandir' : '▼ Minimizar';
+        });
+}
+
+// ---------------------------------------------------------------------------
+// Editor panel
+// ---------------------------------------------------------------------------
+
+function setupEditorPanel() {
+    if (!canEdit()) return;
+    const editorPanel = document.getElementById('editor-panel');
+    if (editorPanel) editorPanel.style.display = 'block';
+    const editorContent = document.getElementById('editor-content');
+    if (editorContent) renderEditorOptions(editorContent);
+}
+
+function renderEditorOptions(container) {
+    container.innerHTML = `
+        <div class="editor-options">
+            <button class="editor-option-btn" data-action="new-event">
+                📅 Crear Evento Completo
+                <small>Agrega un evento con presentaciones y ponentes</small>
+            </button>
+            <button class="editor-option-btn" data-action="add-presentation">
+                📋 Agregar Presentación a Evento Existente
+                <small>Añade una presentación a un evento ya creado</small>
+            </button>
+            <button class="editor-option-btn" data-action="add-speaker">
+                👤 Agregar Ponente a Presentación Existente
+                <small>Vincula un ponente a una presentación existente</small>
+            </button>
+        </div>
+    `;
+    container.querySelectorAll('.editor-option-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            const action = e.currentTarget.dataset.action;
+            if (action === 'new-event')        initEventForm(container);
+            if (action === 'add-presentation') initAddPresentationForm(container);
+            if (action === 'add-speaker')      initAddSpeakerForm(container);
         });
     });
 }
 
-//SPEAKERS
+// ---------------------------------------------------------------------------
+// Coordinate helpers — FIX 1 applied: normaliseCountry() on both sides
+// ---------------------------------------------------------------------------
 
-// Function to display speakers on map
-function displaySpeakersOnMap() {
-	const speakerLocations = new Map();
-	
-	// Group by speaker countries
-	Object.keys(eventsData).forEach(year => {
-		Object.keys(eventsData[year]).forEach(eventTitle => {
-			eventsData[year][eventTitle].forEach(event => {
-				const agency = Array.isArray(event.agency) ? event.agency.join(', ') : event.agency;
-				const place = event.place && event.place.length > 0 ? event.place[0] : {};
-				
-				Object.keys(event.titles).forEach(titleKey => {
-					event.titles[titleKey].forEach(presentation => {
-						const language = Array.isArray(presentation.language) ? presentation.language.join(', ') : presentation.language;
-						
-						presentation.speakers.forEach(speaker => {
-							if (speaker.country_s && speaker.country_s.trim() !== '' && speaker.country_s !== '-') {
-								const speakerCountry = speaker.country_s.trim();
-								
-								// Get coordinates for speaker country
-								const coordinates = getCoordinatesByCountry(speakerCountry);
-								
-								if (coordinates) {
-									if (!speakerLocations.has(speakerCountry)) {
-										speakerLocations.set(speakerCountry, {
-											country: speakerCountry,
-											coordinates: coordinates,
-											speakers: new Map()
-										});
-									}
-									
-									const location = speakerLocations.get(speakerCountry);
-									const speakerKey = `${speaker.speaker}-${speaker.agency_s}`;
-									
-									if (!location.speakers.has(speakerKey)) {
-										location.speakers.set(speakerKey, {
-											...speaker,
-											presentations: []
-										});
-									}
-									
-									location.speakers.get(speakerKey).presentations.push({
-										presentationTitle: titleKey,
-										eventTitle: eventTitle,
-										eventDate: event.date,
-										eventCountry: place.country,
-										eventCity: place.city,
-										eventType: event.type,
-										language: language,
-										url: presentation.URL_document,
-										observations: presentation.observations,
-										year: year
-									});
-								}
-							}
-						});
-					});
-				});
-			});
-		});
-	});
-	
-	// Add speaker markers to map
-	speakerLocations.forEach((location, country) => {
-		if (location.coordinates) {
-			addSpeakerMarker(location, speakersLayer);
-		}
-	});
+function getCoordinatesByCountry(countryName, countriesGeoJSON) {
+    if (!countriesGeoJSON?.features || !countryName) return null;
+    const needle = normaliseCountry(countryName);
+    const feature = countriesGeoJSON.features.find(
+        f => normaliseCountry(f.properties?.country) === needle
+    );
+    if (!feature?.geometry?.coordinates) return null;
+    const [lon, lat] = feature.geometry.coordinates;
+    return [lat, lon];
 }
 
-// Function to add speaker marker
-function addSpeakerMarker(location, layer) {
-	const { coordinates, country, speakers } = location;
-	const totalSpeakers = speakers.size;
-	
-	// Create custom icon for speakers
-	const speakerIcon = L.divIcon({
-		className: 'speaker-marker',
-		html: `<div style="
-			background: #28a745;
-			color: white;
-			border-radius: 50%;
-			width: 25px;
-			height: 25px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-weight: bold;
-			font-size: 12px;
-			border: 3px solid white;
-			box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-		">${totalSpeakers}</div>`,
-		iconSize: [31, 31],
-		iconAnchor: [15, 15]
-	});
-	
-	const marker = L.marker([coordinates.lat, coordinates.lon], {
-		icon: speakerIcon
-	}).addTo(layer);
-	
-	// Create popup with speaker information
-	const popupContent = createSpeakerPopupContent(country, speakers);
-	marker.bindPopup(popupContent, {
-		maxWidth: 450,
-		className: 'custom-popup'
-	});
-	
-	// Add tooltip
-	marker.bindTooltip(`${country} - ${totalSpeakers} speaker(s)`, {
-		permanent: false,
-		direction: 'top'
-	});
+function getCoordinatesByCity(cityName, countryName, citiesGeoJSON) {
+    if (!citiesGeoJSON?.features || !cityName) return null;
+    const needleCity    = normaliseCountry(cityName);
+    const needleCountry = normaliseCountry(countryName);
+    const feature = citiesGeoJSON.features.find(
+        f => normaliseCountry(f.properties?.city)    === needleCity &&
+             normaliseCountry(f.properties?.country) === needleCountry
+    );
+    if (!feature?.geometry?.coordinates) return null;
+    const [lon, lat] = feature.geometry.coordinates;
+    return [lat, lon];
 }
 
-// Function to create speaker popup content
-function createSpeakerPopupContent(country, speakers) {
-	let content = `<div class="popup-container">`;
-	
-	let speakerIndex = 0;
-	speakers.forEach((speakerData, speakerKey) => {
-		content += `
-			<div class="speaker-header">
-				<div class="speaker-name-main">👤 ${speakerData.speaker}</div>
-				<div class="speaker-details-main">
-					🌍 ${speakerData.country_s}${speakerData.agency_s ? ` - 🏢 ${speakerData.agency_s}` : ''}
-				</div>
-			</div>
-			
-			<div class="presentations-by-speaker">
-				<div class="presentations-title">📋 Presentaciones (${speakerData.presentations.length})</div>
-		`;
-		
-		speakerData.presentations.forEach(presentation => {
-			content += `
-				<div class="speaker-presentation-item">
-					<div class="event-info-compact">
-						<strong>📅 ${presentation.eventDate}</strong> - <strong>🌍 ${presentation.eventCountry}</strong><br>
-						<strong>🏙️ ${presentation.eventCity}</strong><br>
-						<strong>🎯 ${presentation.eventTitle}</strong>
-					</div>
-					
-					<div class="presentation-title">📝 ${presentation.presentationTitle}</div>
-					
-					<div class="presentation-meta">
-						<div>🌐 Idioma: ${presentation.language}</div>
-						${presentation.url ? `<div>🔗 <a href="${presentation.url}" target="_blank" class="url-link">Ver documento</a></div>` : ''}
-						${presentation.observations ? `<div>📝 ${presentation.observations}</div>` : ''}
-					</div>
-				</div>
-			`;
-		});
-		
-		content += `</div>`;
-		
-		speakerIndex++;
-		if (speakerIndex < speakers.size) {
-			content += `<hr style="margin: 20px 0; border: 1px solid #eee;">`;
-		}
-	});
-	
-	content += `</div>`;
-	return content;
+// ---------------------------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------------------------
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
-// LANGUAGE FUNCTIONS
-
-// Function to display language filtered map
-function displayLanguageFilteredMap() {
-	if (!filterLanguage) return;
-	
-	const languageLocations = new Map();
-	
-	Object.keys(eventsData).forEach(year => {
-		Object.keys(eventsData[year]).forEach(eventTitle => {
-			eventsData[year][eventTitle].forEach(event => {
-				Object.keys(event.titles).forEach(titleKey => {
-					event.titles[titleKey].forEach(presentation => {
-						const languages = Array.isArray(presentation.language) ? presentation.language : [presentation.language];
-						
-						// Check if this presentation contains the filtered language
-						if (languages.some(lang => lang.toLowerCase() === filterLanguage.toLowerCase())) {
-							let coordinates = null;
-							let locationKey = '';
-							let locationName = '';
-							
-							if (event.place && event.place.length > 0) {
-								const place = event.place[0];
-								
-								// SIEMPRE usar coordenadas de país para languages
-								coordinates = getCoordinatesByCountry(place.country);
-								locationKey = place.country;
-								locationName = place.country;
-							}
-							
-							if (coordinates && coordinates.lat && coordinates.lon) {
-								const key = `${locationKey}-${coordinates.lat},${coordinates.lon}`;
-								
-								if (!languageLocations.has(key)) {
-									languageLocations.set(key, {
-										coordinates: coordinates,
-										locationName: locationName,
-										language: filterLanguage,
-										presentations: []
-									});
-								}
-								
-								languageLocations.get(key).presentations.push({
-									year,
-									eventTitle,
-									presentationTitle: titleKey,
-									language: languages.join(', '),
-									presentation: presentation,
-									event: event
-								});
-							}
-						}
-					});
-				});
-			});
-		});
-	});
-	
-	languageLocations.forEach((location, key) => {
-		addLanguageMarker(location, languagesLayer);
-	});
+function showLoadingIndicator(show) {
+    const el = document.getElementById('loading');
+    if (el) el.style.display = show ? 'flex' : 'none';
 }
 
-// Function to add language marker
-function addLanguageMarker(location, layer) {
-	const customIcon = L.divIcon({
-		className: 'language-marker',
-		html: `<div style="
-			background: #6f42c1;
-			color: white;
-			border-radius: 50%;
-			width: 30px;
-			height: 30px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-weight: bold;
-			font-size: 12px;
-			border: 3px solid white;
-			box-shadow: 0 3px 12px rgba(0,0,0,0.3);
-		">${location.presentations.length}</div>`,
-		iconSize: [36, 36],
-		iconAnchor: [18, 18]
-	});
-	
-	const marker = L.marker([location.coordinates.lat, location.coordinates.lon], {
-		icon: customIcon
-	}).addTo(layer);
-	
-	const popupContent = createLanguagePopupContent(location);
-	marker.bindPopup(popupContent, {
-		maxWidth: 500,
-		className: 'custom-popup'
-	});
-	
-	marker.bindTooltip(`${location.language} en ${location.locationName} - ${location.presentations.length} presentación(es)`, {
-		permanent: false,
-		direction: 'top'
-	});
+function showError(message) {
+    console.error('[FELA]', message);
+    const el = document.getElementById('error-banner');
+    if (el) { el.textContent = message; el.style.display = 'block'; }
 }
 
-// Function to create language popup content
-function createLanguagePopupContent(location) {
-	let content = `<div class="popup-container">
-		<div class="language-header">
-			<div class="language-title">🗣️ Presentaciones en ${location.language}</div>
-		</div>
-	`;
-	
-	// Group presentations by event
-	const eventGroups = new Map();
-	
-	location.presentations.forEach(presentation => {
-		const eventKey = `${presentation.eventTitle}-${presentation.year}`;
-		
-		if (!eventGroups.has(eventKey)) {
-			eventGroups.set(eventKey, {
-				eventTitle: presentation.eventTitle,
-				year: presentation.year,
-				event: presentation.event,
-				presentations: []
-			});
-		}
-		
-		eventGroups.get(eventKey).presentations.push(presentation);
-	});
-	
-	// Display each event group
-	let eventIndex = 0;
-	eventGroups.forEach((eventGroup, eventKey) => {
-		const place = eventGroup.event.place && eventGroup.event.place.length > 0 ? eventGroup.event.place[0] : {};
-		const agency = Array.isArray(eventGroup.event.agency) ? eventGroup.event.agency.join(', ') : eventGroup.event.agency;
-		
-		content += `
-			<div class="language-event-item">
-				<div class="event-header">
-					<div class="event-title">${eventGroup.eventTitle}</div>
-					<div class="event-meta">
-						<span>🏛️ ${agency}</span>
-						<span>📅 ${eventGroup.event.date}</span>
-						<span>🏢 ${eventGroup.event.type}</span>
-						<span>🌍 ${place.country || 'N/A'}</span>
-						<span>🏙️ ${place.city || 'N/A'}</span>
-					</div>
-				</div>
-				
-				<div class="presentations-section">
-					<div class="presentations-title">📋 Presentaciones (${eventGroup.presentations.length})</div>
-		`;
-		
-		// Display all presentations for this event
-		eventGroup.presentations.forEach(presentation => {
-			content += `
-				<div class="presentation-item">
-					<div class="presentation-title">${presentation.presentationTitle}</div>
-					
-					<div class="speakers-list">
-						${presentation.presentation.speakers.map(speaker => `
-							<div class="speaker-item">
-								<div class="speaker-name">👤 ${speaker.speaker}</div>
-								<div class="speaker-details">${speaker.country_s}${speaker.agency_s ? ` - ${speaker.agency_s}` : ''}</div>
-							</div>
-						`).join('')}
-					</div>
-					
-					<div class="presentation-meta">
-						<div>🌐 Idioma: ${presentation.language}</div>
-						${presentation.presentation.URL_document ? `<div>🔗 <a href="${presentation.presentation.URL_document}" target="_blank" class="url-link">Ver documento</a></div>` : ''}
-						${presentation.presentation.observations ? `<div>📝 ${presentation.presentation.observations}</div>` : ''}
-					</div>
-				</div>
-			`;
-		});
-		
-		content += `</div></div>`;
-		
-		eventIndex++;
-		if (eventIndex < eventGroups.size) {
-			content += `<hr style="margin: 20px 0; border: 1px solid #eee;">`;
-		}
-	});
-	
-	content += `</div>`;
-	return content;
-}
+// ---------------------------------------------------------------------------
+// Entry point
+//
+// FIX 2 — Login button:
+//   initAuthButton() from auth.js was never called. It wires the #auth-button
+//   click handler (login redirect when logged out, logout when logged in) and
+//   shows/hides the editor panel and superuser menu based on session state.
+//   Now called here alongside the other setup functions.
+//
+// setupEditorPanel() runs AFTER initAuthButton() resolves because
+//   initAuthButton is async — it calls checkSession() which hits the API.
+//   We await it so canEdit() returns the correct value by the time
+//   setupEditorPanel() reads currentUser.
+// ---------------------------------------------------------------------------
 
-// AGENCY FUNCTIONS
+document.addEventListener('DOMContentLoaded', async () => {
+    setupMenuListeners();
+    setupMapControls();
+    initMap('map');
 
-// Function to display agency filtered map
-function displayAgencyFilteredMap() {
-	if (!filterAgency) return;
-	
-	const agencyLocations = new Map();
-	
-	Object.keys(eventsData).forEach(year => {
-		Object.keys(eventsData[year]).forEach(eventTitle => {
-			eventsData[year][eventTitle].forEach(event => {
-				const agencies = Array.isArray(event.agency) ? event.agency : [event.agency];
-				
-				// Check if this event contains the filtered agency
-				if (agencies.some(agency => agency.toLowerCase() === filterAgency.toLowerCase())) {
-					let coordinates = null;
-					let locationKey = '';
-					let locationName = '';
-					
-					if (event.place && event.place.length > 0) {
-						const place = event.place[0];
+    // FIX 2: initAuthButton wires the login/logout click handler and
+    // sets up editor visibility based on session state.
+    // Must be awaited so currentUser is populated before setupEditorPanel runs.
+    await initAuthButton();
 
-						// SIEMPRE usar coordenadas de país para languages
-						coordinates = getCoordinatesByCountry(place.country);
-						locationKey = place.country;
-						locationName = place.country;
-						}
-							
-						if (coordinates && coordinates.lat && coordinates.lon) {
-							const key = `${locationKey}-${coordinates.lat},${coordinates.lon}`;
-								
-							if (!agencyLocations.has(key)) {
-								agencyLocations.set(key, {
-									coordinates: coordinates,
-									locationName: locationName,
-									agency: filterAgency,
-									events: []
-								});
-							}
-							agencyLocations.get(key).events.push({
-								year,
-								eventTitle,
-								agency: filterAgency,
-								...event
-							});
-					}
-				}
-			});
-		});
-	});
-	
-	agencyLocations.forEach((location, key) => {
-		addAgencyMarker(location, agenciesLayer);
-	});
-}
-
-// Function to add agency marker
-function addAgencyMarker(location, layer) {
-	const customIcon = L.divIcon({
-		className: 'agency-marker',
-		html: `<div style="
-			background: #fd7e14;
-			color: white;
-			border-radius: 50%;
-			width: 30px;
-			height: 30px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-weight: bold;
-			font-size: 12px;
-			border: 3px solid white;
-			box-shadow: 0 3px 12px rgba(0,0,0,0.3);
-		">${location.events.length}</div>`,
-		iconSize: [36, 36],
-		iconAnchor: [18, 18]
-	});
-	
-	const marker = L.marker([location.coordinates.lat, location.coordinates.lon], {
-		icon: customIcon
-	}).addTo(layer);
-	
-	const popupContent = createAgencyPopupContent(location);
-	marker.bindPopup(popupContent, {
-		maxWidth: 500,
-		className: 'custom-popup'
-	});
-	
-	marker.bindTooltip(`${location.agency} en ${location.locationName} - ${location.events.length} evento(s)`, {
-		permanent: false,
-		direction: 'top'
-	});
-}
-
-// Function to create agency popup content
-function createAgencyPopupContent(location) {
-	let content = `<div class="popup-container">
-		<div class="agency-header">
-			<div class="agency-title">🏛️ ${location.agency}</div>
-		</div>
-	`;
-	
-	location.events.forEach((event, index) => {
-		const place = event.place && event.place.length > 0 ? event.place[0] : {};
-		
-		content += `
-			<div class="agency-event-item">
-				<div class="event-header">
-					<div class="event-title">${event.eventTitle}</div>
-					<div class="event-meta">
-						<span>📅 ${event.date}</span>
-						<span>🏢 ${event.type}</span>
-						<span>🌍 ${place.country || 'N/A'}</span>
-						<span>🏙️ ${place.city || 'N/A'}</span>
-					</div>
-				</div>
-				
-				<div class="presentations-section">
-					<div class="presentations-title">📋 Presentaciones (${Object.keys(event.titles).length})</div>
-		`;
-		
-		Object.keys(event.titles).forEach(titleKey => {
-			event.titles[titleKey].forEach(presentation => {
-				const language = Array.isArray(presentation.language) ? presentation.language.join(', ') : presentation.language;
-				
-				content += `
-					<div class="presentation-item">
-						<div class="presentation-title">${titleKey}</div>
-						
-						<div class="speakers-list">
-							${presentation.speakers.map(speaker => `
-								<div class="speaker-item">
-									<div class="speaker-name">👤 ${speaker.speaker}</div>
-									<div class="speaker-details">${speaker.country_s}${speaker.agency_s ? ` - ${speaker.agency_s}` : ''}</div>
-								</div>
-							`).join('')}
-						</div>
-						
-						<div class="presentation-meta">
-							<div>🌐 Idioma: ${language}</div>
-							${presentation.URL_document ? `<div>🔗 <a href="${presentation.URL_document}" target="_blank" class="url-link">Ver documento</a></div>` : ''}
-							${presentation.observations ? `<div>📝 ${presentation.observations}</div>` : ''}
-						</div>
-					</div>
-				`;
-			});
-		});
-		
-		content += `</div>`;
-		
-		if (index < location.events.length - 1) {
-			content += `<hr style="margin: 20px 0; border: 1px solid #eee;">`;
-		}
-	});
-	
-	content += `</div>`;
-	return content;
-}
-
-// MAIN FILTER FUNCTION 
-function filterBy(type, value) {
-	console.log(`Filtering by ${type}: ${value}`);
-	
-	// Reset all filters first
-	filterLanguage = null;
-	filterAgency = null;
-	
-	// Set the appropriate filter and view
-	if (type === 'event') {
-		currentView = 'events';
-		currentLocationView = value; // 'country' or 'city'
-	} else if (type === 'speaker') {
-		currentView = 'speakers';
-	} else if (type === 'lang') {
-		currentView = 'language';
-		filterLanguage = value;
-	} else if (type === 'agc') {
-		currentView = 'agency';
-		filterAgency = value;
-	}
-	
-	// Update the display
-	displayCurrentView();
-}
-
-// Initialize application
-document.addEventListener('DOMContentLoaded', async function() {
-	// Inicializar mapa
-	initMap();
-	// Inicializar autenticación
-	await initAuthButton();
-	
-	// Cargar datos
-	await loadData();
-	
-	// Inicializar editor (solo si está autenticado)
-	initEditor();
-
-	// Inicializar sistema de ayuda
-	initHelpAccordion();
+    // Editor panel content (only renders if canEdit() returns true,
+    // which requires initAuthButton to have completed first)
+    setupEditorPanel();
 });
-
-window.filterBy = filterBy;

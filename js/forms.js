@@ -19,8 +19,8 @@
  *
  *  NO LOGIC CHANGES — only field-name alignment with new serializers.
  */
-
-import { EventsAPI, PresentationsAPI, SpeakersAPI, CountriesAPI, CitiesAPI } from './api.js';
+import axios from 'axios'
+import { EventsAPI, PresentationsAPI, SpeakersAPI, AgenciesAPI, CountriesAPI, CitiesAPI } from './api.js';
 import { Autocomplete } from './autocomplete.js';
 import { canEdit } from './auth.js';
 
@@ -1590,6 +1590,567 @@ export function initAddSpeakerForm(container, prefilledPresentation = null) {
             submitBtn.innerHTML = '💾 Add Speaker';
         }
     });
+}
+
+// ===========================================================================
+// EDIT EVENT FORM
+// ===========================================================================
+
+export function initEditEventForm(container, eventData, onSave, availableLanguages = []) {
+    if (!canEdit()) {
+        container.innerHTML = `<div class="alert-inline error"><p>⛔ Sin permisos para editar eventos.</p></div>`;
+        return;
+    }
+
+    let editAgencies  = (eventData.agencies || []).map(a => ({ id: a.id, name: a.name }));
+    let agencyAC      = null;
+    let countryEditAC = null;
+    let cityEditAC    = null;
+    let editCountry   = eventData.country || '';
+    let editCity      = eventData.city    || '';
+
+    container.innerHTML = `
+        <form id="edit-event-form" class="event-form">
+            <div class="form-section">
+                <h4 class="form-section-title">✏️ Editar Evento</h4>
+                <small style="color:#888;">ID: ${eventData.id} · Creado por: ${eventData.created_by || 'legado'}</small>
+                <div class="form-grid" style="margin-top:12px;">
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label for="edit-ev-title">Título del evento *</label>
+                        <input type="text" id="edit-ev-title" class="form-control" value="${escapeVal(eventData.event_title)}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-ev-year">Año</label>
+                        <input type="number" id="edit-ev-year" class="form-control" value="${eventData.year || ''}" min="2000" max="2100">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-ev-date">Fecha</label>
+                        <input type="text" id="edit-ev-date" class="form-control" value="${escapeVal(eventData.date)}" placeholder="ej. 15-17 Nov">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-ev-type">Tipo</label>
+                        <input type="text" id="edit-ev-type" class="form-control" value="${escapeVal(eventData.type)}" placeholder="ej. Presencial">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-ev-country">País</label>
+                        <input type="text" id="edit-ev-country" class="form-control autocomplete-input" value="${escapeVal(eventData.country)}" placeholder="Buscar país...">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-ev-city">Ciudad</label>
+                        <input type="text" id="edit-ev-city" class="form-control autocomplete-input" value="${escapeVal(eventData.city)}" placeholder="Buscar ciudad...">
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label>Organismos</label>
+                        <div style="display:flex;gap:10px;">
+                            <input type="text" id="edit-ev-agency-input" class="form-control autocomplete-input" placeholder="Buscar organismo...">
+                            <button type="button" id="edit-ev-agency-add" class="btn btn-outline-secondary">➕</button>
+                        </div>
+                        <div id="edit-ev-agencies-chips" class="chips-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h4 class="form-section-title">📋 Presentaciones</h4>
+                <div id="edit-ev-pres-list"></div>
+            </div>
+
+            <div class="form-buttons">
+                <button type="button" id="edit-ev-delete" class="btn btn-outline-danger" style="margin-right:auto;">🗑️ Eliminar Evento</button>
+                <button type="button" id="edit-ev-cancel" class="btn-cancel">❌ Cancelar</button>
+                <button type="submit" id="edit-ev-submit" class="btn-save">💾 Guardar Evento</button>
+            </div>
+            <div id="edit-ev-alert" class="alert-inline" style="display:none;margin-top:15px;"></div>
+        </form>
+    `;
+
+    // Pre-populate agency chips
+    editAgencies.forEach(ag => addEditAgencyChip(ag.name, ag.id));
+
+    // Render presentations list
+    renderEditPresentationsList(eventData.presentations || []);
+
+    // Agency autocomplete
+    agencyAC = new Autocomplete(document.getElementById('edit-ev-agency-input'), {
+        type: 'agency', searchLocal: true, allowCreate: true,
+        onSelect: (data) => {
+            addEditAgencyChip(data.name, data.id);
+            document.getElementById('edit-ev-agency-input').value = '';
+        },
+        onCreate: async (name) => {
+            const r = await AgenciesAPI.create({ name });
+            const id = r.success ? r.data.id : null;
+            addEditAgencyChip(name, id);
+            document.getElementById('edit-ev-agency-input').value = '';
+        }
+    });
+
+    document.getElementById('edit-ev-agency-add').addEventListener('click', () => {
+        const val = document.getElementById('edit-ev-agency-input').value.trim();
+        if (val && !editAgencies.find(a => a.name.toLowerCase() === val.toLowerCase())) {
+            addEditAgencyChip(val, null);
+        }
+        document.getElementById('edit-ev-agency-input').value = '';
+    });
+
+    // Country autocomplete (local DB + Nominatim)
+    countryEditAC = new Autocomplete(document.getElementById('edit-ev-country'), {
+        type: 'country', searchLocal: true, searchNominatim: true, allowCreate: false,
+        onSelect: async (data, type) => {
+            if (type === 'nominatim') {
+                await CountriesAPI.create({
+                    country: data.name,
+                    lat: parseFloat(data.lat),
+                    lon: parseFloat(data.lon)
+                });
+                editCountry = data.name;
+            } else {
+                editCountry = data.country;
+            }
+            document.getElementById('edit-ev-country').value = editCountry;
+            // Reset city when country changes
+            document.getElementById('edit-ev-city').value = '';
+            editCity = '';
+            if (cityEditAC) cityEditAC.destroy();
+            cityEditAC = buildCityAC();
+        }
+    });
+
+    // City autocomplete (local DB + Nominatim, depends on selected country)
+    cityEditAC = buildCityAC();
+
+    function buildCityAC() {
+        return new Autocomplete(document.getElementById('edit-ev-city'), {
+            type: 'city', searchLocal: true, searchNominatim: true, allowCreate: false,
+            dependsOn: () => editCountry,
+            onSelect: async (data, type) => {
+                if (type === 'nominatim') {
+                    await CitiesAPI.create({
+                        country: editCountry,
+                        city: data.name,
+                        lat: parseFloat(data.lat),
+                        lon: parseFloat(data.lon)
+                    });
+                    editCity = data.name;
+                } else {
+                    editCity = data.city;
+                }
+                document.getElementById('edit-ev-city').value = editCity;
+            }
+        });
+    }
+
+    function destroyAllACs() {
+        if (countryEditAC) { countryEditAC.destroy(); countryEditAC = null; }
+        if (cityEditAC)    { cityEditAC.destroy();    cityEditAC    = null; }
+        if (agencyAC)      { agencyAC.destroy();      agencyAC      = null; }
+    }
+
+    // Delete entire event
+    document.getElementById('edit-ev-delete').addEventListener('click', async () => {
+        if (!confirm(`¿Eliminar el evento "${eventData.event_title}"?\n\nSe eliminarán todas sus presentaciones y los vínculos con ponentes.`)) return;
+        const r = await EventsAPI.delete(eventData.id);
+        if (r.success) {
+            destroyAllACs();
+            onSave();
+        } else {
+            alert('❌ Error al eliminar: ' + r.error);
+        }
+    });
+
+    document.getElementById('edit-ev-cancel').addEventListener('click', () => {
+        destroyAllACs();
+        onSave();
+    });
+
+    container.querySelector('#edit-event-form').addEventListener('submit', handleEditEventSubmit);
+
+    // ---------------------------------------------------------------------------
+    // Helpers (closures over editAgencies)
+    // ---------------------------------------------------------------------------
+
+    function addEditAgencyChip(name, id) {
+        if (editAgencies.find(a => a.name.toLowerCase() === name.toLowerCase())) return;
+        editAgencies.push({ id, name });
+        const chipsEl = document.getElementById('edit-ev-agencies-chips');
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.innerHTML = `${name}<button type="button" class="chip-remove" data-name="${name}">×</button>`;
+        chipsEl.appendChild(chip);
+        chip.querySelector('.chip-remove').addEventListener('click', () => {
+            editAgencies = editAgencies.filter(a => a.name !== name);
+            chip.remove();
+        });
+    }
+
+    function renderEditPresentationsList(presentations) {
+        const listEl = document.getElementById('edit-ev-pres-list');
+        if (!presentations.length) {
+            listEl.innerHTML = '<p style="color:#888;font-size:0.9rem;">Sin presentaciones.</p>';
+            return;
+        }
+        listEl.innerHTML = '';
+        presentations.forEach(pres => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #e1e4e8;border-radius:6px;margin-bottom:8px;';
+            row.innerHTML = `
+                <span style="font-size:0.9rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeVal(pres.title)}">📋 ${escapeVal(pres.title)}</span>
+                <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px;">
+                    <button type="button" class="popup-edit-btn" data-pres-id="${pres.id}">✏️</button>
+                    <button type="button" class="popup-delete-btn" data-pres-id="${pres.id}" data-pres-title="${escapeVal(pres.title)}">🗑️</button>
+                </div>
+            `;
+            row.querySelector('[data-pres-id].popup-edit-btn').addEventListener('click', async () => {
+                const r = await PresentationsAPI.get(pres.id);
+                if (!r.success) { alert('Error cargando presentación: ' + r.error); return; }
+                destroyAllACs();
+                initEditPresentationForm(container, r.data,
+                    () => initEditEventForm(container, eventData, onSave, availableLanguages),
+                    onSave,
+                    availableLanguages
+                );
+            });
+            row.querySelector('[data-pres-id].popup-delete-btn').addEventListener('click', async () => {
+                if (!confirm(`¿Eliminar la presentación "${pres.title}"?`)) return;
+                const r = await PresentationsAPI.delete(pres.id);
+                if (r.success) {
+                    row.remove();
+                    eventData.presentations = eventData.presentations.filter(p => p.id !== pres.id);
+                } else {
+                    alert('Error al eliminar: ' + r.error);
+                }
+            });
+            listEl.appendChild(row);
+        });
+    }
+
+    async function handleEditEventSubmit(e) {
+        e.preventDefault();
+        const submitBtn = container.querySelector('#edit-ev-submit');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="loading-spinner"></span> Guardando...';
+
+        const title   = document.getElementById('edit-ev-title').value.trim();
+        const year    = parseInt(document.getElementById('edit-ev-year').value) || null;
+        const date    = document.getElementById('edit-ev-date').value.trim();
+        const type    = document.getElementById('edit-ev-type').value.trim();
+        const country = editCountry || document.getElementById('edit-ev-country').value.trim();
+        const city    = editCity    || document.getElementById('edit-ev-city').value.trim();
+
+        if (!title)   { showEditAlert('El título es obligatorio', 'error'); submitBtn.disabled = false; submitBtn.innerHTML = '💾 Guardar Evento'; return; }
+        if (!country) { showEditAlert('El país es obligatorio',   'error'); submitBtn.disabled = false; submitBtn.innerHTML = '💾 Guardar Evento'; return; }
+        if (!city)    { showEditAlert('La ciudad es obligatoria', 'error'); submitBtn.disabled = false; submitBtn.innerHTML = '💾 Guardar Evento'; return; }
+
+        // Resolve missing agency IDs (for agencies added by name without an id)
+        const agencyIds = [];
+        for (const ag of editAgencies) {
+            if (ag.id) { agencyIds.push(ag.id); continue; }
+            const r = await AgenciesAPI.create({ name: ag.name });
+            if (r.success) agencyIds.push(r.data.id);
+        }
+
+        const result = await EventsAPI.patch(eventData.id, {
+            event_title: title, year, date, type, country, city, agency: agencyIds
+        });
+
+        if (result.success) {
+            showEditAlert('✅ Evento actualizado correctamente', 'success');
+            destroyAllACs();
+            setTimeout(() => onSave(), 1500);
+        } else {
+            showEditAlert('❌ Error: ' + result.error, 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '💾 Guardar Evento';
+        }
+    }
+
+    function showEditAlert(msg, type) {
+        const el = document.getElementById('edit-ev-alert');
+        if (!el) return;
+        el.className = `alert-inline ${type}`;
+        el.textContent = msg;
+        el.style.display = 'block';
+        if (type === 'success') setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+}
+
+// Helper for HTML attribute value escaping
+function escapeVal(str) {
+    if (!str) return '';
+    return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ===========================================================================
+// EDIT PRESENTATION FORM
+// ===========================================================================
+
+export function initEditPresentationForm(container, presentationData, onBack, onSave, availableLanguages = []) {
+    // Track languages locally; speaker add/remove calls API immediately
+    let editLanguages = [...(presentationData.language || [])];
+    let speakerACInstance = null;
+
+    container.innerHTML = `
+        <form id="edit-pres-form" class="event-form">
+            <button type="button" id="edit-pres-back" class="btn btn-outline-secondary" style="margin-bottom:16px;">← Volver al evento</button>
+
+            <div class="form-section">
+                <h4 class="form-section-title">✏️ Editar Presentación</h4>
+                <small style="color:#888;">ID: ${presentationData.id} · Evento: ${escapeVal(presentationData.event_title)}</small>
+                <div class="form-grid" style="margin-top:12px;">
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label for="edit-pres-title">Título *</label>
+                        <input type="text" id="edit-pres-title" class="form-control" value="${escapeVal(presentationData.title)}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Idiomas</label>
+                        <div style="display:flex;gap:10px;">
+                            <input type="text" id="edit-pres-lang-input" class="form-control" list="edit-pres-lang-list" placeholder="ej. Español, English...">
+                            <datalist id="edit-pres-lang-list">
+                                ${[...new Set(availableLanguages)].sort().map(l => `<option value="${escapeVal(l)}"></option>`).join('')}
+                            </datalist>
+                            <button type="button" id="edit-pres-lang-add" class="btn btn-outline-secondary">➕</button>
+                        </div>
+                        <div id="edit-pres-lang-chips" class="chips-container"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-pres-url">URL Documento</label>
+                        <input type="url" id="edit-pres-url" class="form-control" value="${escapeVal(presentationData.url_document)}" placeholder="https://...">
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label for="edit-pres-obs">Observaciones</label>
+                        <textarea id="edit-pres-obs" class="form-control" rows="2">${escapeVal(presentationData.observations)}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h4 class="form-section-title">👥 Ponentes</h4>
+                <div id="edit-pres-speakers-list"></div>
+                <div style="margin-top:12px;">
+                    <label style="font-weight:600;">Añadir ponente</label>
+                    <div style="display:flex;gap:10px;margin-top:6px;">
+                        <input type="text" id="edit-pres-speaker-input" class="form-control autocomplete-input" placeholder="Buscar o crear ponente...">
+                        <input type="text" id="edit-pres-speaker-country" class="form-control" placeholder="País *" style="max-width:150px;">
+                        <input type="text" id="edit-pres-speaker-agency" class="form-control" placeholder="Organismo" style="max-width:150px;">
+                        <button type="button" id="edit-pres-speaker-add" class="btn btn-outline-secondary">➕</button>
+                    </div>
+                    <div id="edit-pres-add-speaker-alert" style="font-size:0.85rem;margin-top:4px;"></div>
+                    <small style="display:block;margin-top:8px;padding:6px 10px;background:#fff3cd;color:#664d03;border-radius:4px;">
+                        ⚠️ Haz clic en <strong>➕</strong> para vincular al ponente <strong>antes</strong> de guardar.
+                        Si guardas sin pulsar ➕, el ponente no quedará vinculado a esta presentación.
+                    </small>
+                </div>
+            </div>
+
+            <div class="form-buttons">
+                <button type="button" id="edit-pres-cancel" class="btn-cancel">❌ Cancelar</button>
+                <button type="submit" id="edit-pres-submit" class="btn-save">💾 Guardar Presentación</button>
+            </div>
+            <div id="edit-pres-alert" class="alert-inline" style="display:none;margin-top:15px;"></div>
+        </form>
+    `;
+
+    // Pre-populate language chips
+    editLanguages.forEach(l => addEditLangChip(l));
+
+    // Render current speakers
+    renderEditSpeakerList(presentationData.speakers || []);
+
+    // Speaker name autocomplete (for the add-speaker row)
+    speakerACInstance = new Autocomplete(document.getElementById('edit-pres-speaker-input'), {
+        type: 'speaker', searchLocal: true, allowCreate: false,
+        onSelect: (data) => {
+            document.getElementById('edit-pres-speaker-input').value  = data.name;
+            document.getElementById('edit-pres-speaker-country').value = data.country || '';
+            document.getElementById('edit-pres-speaker-agency').value  = data.agency  || '';
+            document.getElementById('edit-pres-speaker-input').dataset.speakerId = data.id;
+        }
+    });
+
+    // Language add
+    document.getElementById('edit-pres-lang-add').addEventListener('click', () => {
+        const val = document.getElementById('edit-pres-lang-input').value.trim();
+        if (val) { addEditLangChip(val); document.getElementById('edit-pres-lang-input').value = ''; }
+    });
+    document.getElementById('edit-pres-lang-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); document.getElementById('edit-pres-lang-add').click(); }
+    });
+
+    // Add speaker button
+    document.getElementById('edit-pres-speaker-add').addEventListener('click', handleAddSpeaker);
+
+    // Back
+    document.getElementById('edit-pres-back').addEventListener('click', () => {
+        if (speakerACInstance) speakerACInstance.destroy();
+        onBack();
+    });
+
+    document.getElementById('edit-pres-cancel').addEventListener('click', () => {
+        if (speakerACInstance) speakerACInstance.destroy();
+        onBack();
+    });
+
+    document.getElementById('edit-pres-form').addEventListener('submit', handleEditPresSubmit);
+
+    // ---------------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------------
+
+    function addEditLangChip(lang) {
+        if (editLanguages.includes(lang)) return;
+        editLanguages.push(lang);
+        const el = document.getElementById('edit-pres-lang-chips');
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.innerHTML = `${lang}<button type="button" class="chip-remove" data-lang="${lang}">×</button>`;
+        el.appendChild(chip);
+        chip.querySelector('.chip-remove').addEventListener('click', () => {
+            editLanguages = editLanguages.filter(l => l !== lang);
+            chip.remove();
+        });
+    }
+
+    function renderEditSpeakerList(speakers) {
+        const listEl = document.getElementById('edit-pres-speakers-list');
+        listEl.innerHTML = '';
+        if (!speakers.length) {
+            listEl.innerHTML = '<p style="color:#888;font-size:0.85rem;">Sin ponentes vinculados.</p>';
+            return;
+        }
+        speakers.forEach(spk => {
+            const row = document.createElement('div');
+            row.dataset.speakerId = spk.id;
+            row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border:1px solid #e1e4e8;border-radius:6px;margin-bottom:6px;';
+            row.innerHTML = `
+                <span style="font-size:0.9rem;">
+                    👤 <strong>${escapeVal(spk.name)}</strong>
+                    <span style="color:#666;"> — ${escapeVal(spk.country || '')}${spk.agency ? ` (${escapeVal(spk.agency)})` : ''}</span>
+                </span>
+                <button type="button" class="popup-delete-btn" style="flex-shrink:0;margin-left:8px;">× Desvincular</button>
+            `;
+            row.querySelector('.popup-delete-btn').addEventListener('click', async () => {
+                if (!confirm(`¿Desvincular a "${spk.name}" de esta presentación?`)) return;
+                const r = await PresentationsAPI.removeSpeaker(presentationData.id, spk.id);
+                if (r.success) {
+                    row.remove();
+                    presentationData.speakers = presentationData.speakers.filter(s => s.id !== spk.id);
+                    if (!document.querySelectorAll('#edit-pres-speakers-list [data-speaker-id]').length) {
+                        document.getElementById('edit-pres-speakers-list').innerHTML =
+                            '<p style="color:#888;font-size:0.85rem;">Sin ponentes vinculados.</p>';
+                    }
+                } else {
+                    alert('Error al desvincular: ' + r.error);
+                }
+            });
+            listEl.appendChild(row);
+        });
+    }
+
+    async function handleAddSpeaker() {
+        const nameInput    = document.getElementById('edit-pres-speaker-input');
+        const countryInput = document.getElementById('edit-pres-speaker-country');
+        const agencyInput  = document.getElementById('edit-pres-speaker-agency');
+        const alertEl      = document.getElementById('edit-pres-add-speaker-alert');
+
+        const name    = nameInput.value.trim();
+        const country = countryInput.value.trim();
+        const agency  = agencyInput.value.trim();
+        const existingId = nameInput.dataset.speakerId ? Number(nameInput.dataset.speakerId) : null;
+
+        if (!name || !country) {
+            alertEl.style.color = '#dc3545';
+            alertEl.textContent = '⚠️ Nombre y país son obligatorios.';
+            return;
+        }
+
+        alertEl.style.color = '#ffc107';
+        alertEl.textContent = '⏳ Vinculando ponente...';
+
+        let speakerId = existingId;
+        if (!speakerId) {
+            const existing = await SpeakersAPI.list(name, country);
+            const found = existing.success
+                ? (existing.data.results || existing.data || []).find(s =>
+                    s.name.toLowerCase() === name.toLowerCase())
+                : null;
+            if (found) {
+                speakerId = found.id;
+            } else {
+                const created = await SpeakersAPI.create({ name, country, agency });
+                if (!created.success) {
+                    alertEl.style.color = '#dc3545';
+                    alertEl.textContent = '❌ Error al crear ponente: ' + created.error;
+                    return;
+                }
+                speakerId = created.data.id;
+            }
+        }
+
+        const linkResult = await PresentationsAPI.addSpeaker(presentationData.id, speakerId);
+        if (!linkResult.success) {
+            alertEl.style.color = '#dc3545';
+            alertEl.textContent = '❌ Error al vincular: ' + linkResult.error;
+            return;
+        }
+
+        // Add the new speaker to the live list
+        const newSpeaker = { id: speakerId, name, country, agency };
+        presentationData.speakers.push(newSpeaker);
+        const listEl = document.getElementById('edit-pres-speakers-list');
+        const placeholder = listEl.querySelector('p');
+        if (placeholder) placeholder.remove();
+        renderEditSpeakerList(presentationData.speakers);
+
+        nameInput.value = '';
+        countryInput.value = '';
+        agencyInput.value = '';
+        delete nameInput.dataset.speakerId;
+        alertEl.style.color = '#28a745';
+        alertEl.textContent = `✅ ${name} vinculado correctamente.`;
+        setTimeout(() => { alertEl.textContent = ''; }, 3000);
+    }
+
+    async function handleEditPresSubmit(e) {
+        e.preventDefault();
+        const submitBtn = document.getElementById('edit-pres-submit');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="loading-spinner"></span> Guardando...';
+
+        const title = document.getElementById('edit-pres-title').value.trim();
+        const url   = document.getElementById('edit-pres-url').value.trim();
+        const obs   = document.getElementById('edit-pres-obs').value.trim();
+
+        if (!title) {
+            showPresAlert('El título es obligatorio', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '💾 Guardar Presentación';
+            return;
+        }
+
+        const result = await PresentationsAPI.patch(presentationData.id, {
+            title, language: editLanguages, url_document: url, observations: obs
+        });
+
+        if (result.success) {
+            showPresAlert('✅ Presentación actualizada', 'success');
+            if (speakerACInstance) speakerACInstance.destroy();
+            setTimeout(() => onSave(), 1500);
+        } else {
+            showPresAlert('❌ Error: ' + result.error, 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '💾 Guardar Presentación';
+        }
+    }
+
+    function showPresAlert(msg, type) {
+        const el = document.getElementById('edit-pres-alert');
+        if (!el) return;
+        el.className = `alert-inline ${type}`;
+        el.textContent = msg;
+        el.style.display = 'block';
+        if (type === 'success') setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
 }
 
 // ===========================================================================

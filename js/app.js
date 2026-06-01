@@ -41,10 +41,14 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'bootstrap';
 
-import { canEdit, initAuthButton }          from './auth.js';
+import { canEdit, initAuthButton,
+         getCurrentUser }                   from './auth.js';
 import { initEventForm,
          initAddPresentationForm,
-         initAddSpeakerForm }               from './forms.js';
+         initAddSpeakerForm,
+         initEditEventForm,
+         initEditPresentationForm }         from './forms.js';
+import { EventsAPI }                        from './api.js';
 import { handleRefreshPendingUsers,
          loadPendingUsers }                 from './admin.js';
 
@@ -73,7 +77,8 @@ let eventMarkers   = null;
 let speakerMarkers = null;
 let cityMarkers    = null;
 
-let activeFilters = { view: 'event-country', language: null, agency: null };
+let activeFilters  = { view: 'event-country', language: null, agency: null };
+let allLanguages   = [];
 
 // ---------------------------------------------------------------------------
 // Map initialisation
@@ -95,8 +100,8 @@ function initMap(containerId = 'map') {
     L.tileLayer(TILE_URL, { attribution: TILE_ATTRIB, maxZoom: 19 }).addTo(map);
 
     eventMarkers   = L.layerGroup().addTo(map);
-    speakerMarkers = L.layerGroup();
-    cityMarkers    = L.layerGroup();
+    speakerMarkers = L.layerGroup().addTo(map);
+    cityMarkers    = L.layerGroup().addTo(map);
 
     L.control.layers(null, {
         'Eventos':  eventMarkers,
@@ -116,7 +121,8 @@ async function loadGeoJsonData() {
         showLoadingIndicator(true);
         const response = await fetch(GEOJSON_URL);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        geoJsonData = await response.json();
+        geoJsonData  = await response.json();
+        allLanguages = extractAllLanguages(geoJsonData);
         populateLanguagesDropdown(geoJsonData);
         populateAgenciesDropdown(geoJsonData);
         renderMap();
@@ -239,6 +245,7 @@ function displayEventsOnMap(eventsData, countriesGeoJSON, view) {
         marker.bindPopup(createEventsGroupPopup(place, events), {
             maxWidth: 420, maxHeight: 400
         });
+        marker.on('popupopen', () => injectPopupEditButtons(marker));
         eventMarkers.addLayer(marker);
     });
 }
@@ -345,6 +352,7 @@ function displayByLanguage(eventsData, countriesGeoJSON) {
             weight: 2, opacity: 1, fillOpacity: 0.8
         });
         marker.bindPopup(createEventsGroupPopup(place, events), { maxWidth: 420, maxHeight: 400 });
+        marker.on('popupopen', () => injectPopupEditButtons(marker));
         eventMarkers.addLayer(marker);
     });
 }
@@ -383,6 +391,7 @@ function displayByAgency(eventsData, countriesGeoJSON) {
             weight: 2, opacity: 1, fillOpacity: 0.8
         });
         marker.bindPopup(createEventsGroupPopup(place, events), { maxWidth: 420, maxHeight: 400 });
+        marker.on('popupopen', () => injectPopupEditButtons(marker));
         eventMarkers.addLayer(marker);
     });
 }
@@ -411,14 +420,22 @@ function displayCitiesOnMap(citiesGeoJSON) {
 // ---------------------------------------------------------------------------
 
 function createEventsGroupPopup(place, events) {
-    let html = `<div class="popup-event">
-        <div class="popup-place">📍 <strong>${escapeHtml(place.city || place.country)}</strong>
-        ${place.city && place.city !== place.country ? `, ${escapeHtml(place.country)}` : ''}</div>`;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'popup-event';
+
+    const placeDiv = document.createElement('div');
+    placeDiv.className = 'popup-place';
+    placeDiv.innerHTML = `📍 <strong>${escapeHtml(place.city || place.country)}</strong>${place.city && place.city !== place.country ? `, ${escapeHtml(place.country)}` : ''}`;
+    wrapper.appendChild(placeDiv);
 
     events.forEach(({ eventTitle, year, eventData }) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'popup-event-item';
+        if (eventData.id)           itemEl.dataset.eventId   = eventData.id;
+        if (eventData.created_by !== undefined) itemEl.dataset.createdBy = String(eventData.created_by);
+
         const agencies = (eventData.agency || []).join(', ');
-        html += `
-        <div class="popup-event-item">
+        let inner = `
             <h4>${escapeHtml(eventTitle)}</h4>
             <div class="popup-meta">
                 📅 ${escapeHtml(String(year))}
@@ -428,11 +445,10 @@ function createEventsGroupPopup(place, events) {
             ${agencies ? `<div class="popup-agencies">🏢 ${escapeHtml(agencies)}</div>` : ''}`;
 
         Object.entries(eventData.titles || {}).forEach(([presTitle, presList]) => {
-            html += `<div class="popup-presentation">
-                <strong>📋 ${escapeHtml(presTitle)}</strong>`;
+            inner += `<div class="popup-presentation"><strong>📋 ${escapeHtml(presTitle)}</strong>`;
             presList.forEach(presData => {
                 (presData.speakers || []).forEach(speaker => {
-                    html += `<div class="popup-speaker">
+                    inner += `<div class="popup-speaker">
                         👤 ${escapeHtml(speaker.speaker || '')}
                         <span class="speaker-details">
                             ${escapeHtml(speaker.country || '')}
@@ -441,21 +457,101 @@ function createEventsGroupPopup(place, events) {
                     </div>`;
                 });
                 if (presData.language?.length) {
-                    html += `<div class="popup-lang">🌐 ${presData.language.map(escapeHtml).join(', ')}</div>`;
+                    inner += `<div class="popup-lang">🌐 ${presData.language.map(escapeHtml).join(', ')}</div>`;
                 }
                 if (presData.URL_document) {
-                    html += `<div class="popup-url">
-                        <a href="${escapeHtml(presData.URL_document)}" target="_blank">📄 Documento</a>
-                    </div>`;
+                    inner += `<div class="popup-url"><a href="${escapeHtml(presData.URL_document)}" target="_blank">📄 Documento</a></div>`;
                 }
             });
-            html += `</div>`;
+            inner += `</div>`;
         });
-        html += `</div>`;
+
+        inner += `<div class="popup-actions"></div>`;
+        itemEl.innerHTML = inner;
+        wrapper.appendChild(itemEl);
     });
 
-    html += `</div>`;
-    return html;
+    return wrapper;
+}
+
+// ---------------------------------------------------------------------------
+// Popup edit button injection — called on popupopen, checks auth at click time
+// ---------------------------------------------------------------------------
+
+function injectPopupEditButtons(marker) {
+    if (!canEdit()) return;
+    const user = getCurrentUser();
+    if (!user) return;
+
+    const popupEl = marker.getPopup()?.getElement();
+    if (!popupEl) return;
+
+    popupEl.querySelectorAll('[data-event-id]').forEach(itemEl => {
+        const actionsDiv = itemEl.querySelector('.popup-actions');
+        if (!actionsDiv || actionsDiv.children.length > 0) return;
+
+        const eventId   = Number(itemEl.dataset.eventId);
+        const createdBy = itemEl.dataset.createdBy;
+        const isLegacy  = !createdBy || createdBy === 'null';
+        const isOwner   = !isLegacy && createdBy === user.username;
+        const canModify = isOwner || user.is_superuser;
+
+        if (!canModify) return;
+
+        const editBtn = document.createElement('button');
+        editBtn.className   = 'popup-edit-btn';
+        editBtn.textContent = '✏️ Editar';
+        editBtn.addEventListener('click', () => {
+            marker.closePopup();
+            loadEventForEdit(eventId);
+        });
+        actionsDiv.appendChild(editBtn);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className   = 'popup-delete-btn';
+        deleteBtn.textContent = '🗑️ Eliminar';
+        const eventTitle = itemEl.querySelector('h4')?.textContent || String(eventId);
+        deleteBtn.addEventListener('click', () => deleteEventFromPopup(eventId, eventTitle));
+        actionsDiv.appendChild(deleteBtn);
+    });
+}
+
+async function loadEventForEdit(eventId) {
+    const editorPanel   = document.getElementById('editor-panel');
+    const editorContent = document.getElementById('editor-content');
+    if (!editorPanel || !editorContent) return;
+
+    editorPanel.style.display = 'block';
+    const contentEl = document.getElementById('editor-content');
+    if (contentEl && getComputedStyle(contentEl).display === 'none') {
+        contentEl.style.display = 'block';
+        const btn = document.getElementById('toggle-editor');
+        if (btn) btn.textContent = '▼ Minimizar';
+    }
+
+    editorContent.innerHTML = '<div style="padding:20px;text-align:center;">⏳ Cargando...</div>';
+
+    const result = await EventsAPI.get(eventId);
+    if (!result.success) {
+        editorContent.innerHTML = `<div class="alert-inline error" style="margin:10px;">❌ ${result.error}</div>`;
+        setTimeout(() => renderEditorOptions(editorContent), 3000);
+        return;
+    }
+
+    initEditEventForm(editorContent, result.data, () => {
+        renderEditorOptions(editorContent);
+        loadGeoJsonData();
+    }, allLanguages);
+}
+
+async function deleteEventFromPopup(eventId, eventTitle) {
+    if (!confirm(`¿Eliminar el evento "${eventTitle}"?\n\nSe eliminarán también todas sus presentaciones.`)) return;
+    const result = await EventsAPI.delete(eventId);
+    if (result.success) {
+        loadGeoJsonData();
+    } else {
+        alert('❌ Error al eliminar: ' + result.error);
+    }
 }
 
 function createSpeakerPopupContent(country, speakersMap) {
@@ -489,6 +585,26 @@ function createSpeakerPopupContent(country, speakersMap) {
 
     html += `</div>`;
     return html;
+}
+
+// ---------------------------------------------------------------------------
+// Language extraction — collects all language strings from the full dataset
+// ---------------------------------------------------------------------------
+
+function extractAllLanguages(data) {
+    const langs = new Set();
+    Object.values(data.events || {}).forEach(yearEvents =>
+        Object.values(yearEvents).forEach(eventList =>
+            eventList.forEach(ev =>
+                Object.values(ev.titles || {}).forEach(presList =>
+                    presList.forEach(p => (p.language || []).forEach(l => {
+                        if (l && l.trim()) langs.add(l.trim());
+                    }))
+                )
+            )
+        )
+    );
+    return [...langs].sort();
 }
 
 // ---------------------------------------------------------------------------
@@ -607,14 +723,11 @@ function setupMenuListeners() {
     // ---------------------------------------------------------------------------
     document.querySelectorAll('.help-accordion-header').forEach(header => {
         header.addEventListener('click', () => {
-            const content = header.closest('.help-accordion-item')
-                                  ?.querySelector('.help-accordion-content');
-            const icon    = header.querySelector('.help-accordion-icon');
-            if (!content) return;
-
-            // getComputedStyle gives the real rendered display value
-            const isOpen = getComputedStyle(content).display !== 'none';
-            content.style.display = isOpen ? 'none' : 'block';
+            const item = header.closest('.help-accordion-item');
+            const icon = header.querySelector('.help-accordion-icon');
+            if (!item) return;
+            const isOpen = item.classList.contains('active');
+            item.classList.toggle('active', !isOpen);
             if (icon) icon.textContent = isOpen ? '▼' : '▲';
         });
     });

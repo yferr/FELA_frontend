@@ -337,6 +337,31 @@ export const SpeakersAPI = {
         } catch (error) {
             return handleAPIError(error, 'Error al crear speaker');
         }
+    },
+
+    async update(speakerId, speakerData) {
+        try {
+            const response = await axios.put(
+                `${API_BASE_URL}/FELA/speakers/${speakerId}/`,
+                speakerData,
+                getAxiosConfig()
+            );
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleAPIError(error, 'Error al actualizar ponente');
+        }
+    },
+
+    async delete(speakerId) {
+        try {
+            await axios.delete(
+                `${API_BASE_URL}/FELA/speakers/${speakerId}/`,
+                getAxiosConfig()
+            );
+            return { success: true };
+        } catch (error) {
+            return handleAPIError(error, 'Error al eliminar ponente');
+        }
     }
 };
 
@@ -406,6 +431,19 @@ export const PresentationsAPI = {
             const response = await axios.put(
                 `${API_BASE_URL}/FELA/presentations/${presentationId}/`,
                 presentationData,
+                getAxiosConfig()
+            );
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleAPIError(error, 'Error al actualizar presentación');
+        }
+    },
+
+    async patch(presentationId, data) {
+        try {
+            const response = await axios.patch(
+                `${API_BASE_URL}/FELA/presentations/${presentationId}/`,
+                data,
                 getAxiosConfig()
             );
             return { success: true, data: response.data };
@@ -520,6 +558,19 @@ export const EventsAPI = {
             const response = await axios.put(
                 `${API_BASE_URL}/FELA/events/${eventId}/`,
                 eventData,
+                getAxiosConfig()
+            );
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleAPIError(error, 'Error al actualizar evento');
+        }
+    },
+
+    async patch(eventId, data) {
+        try {
+            const response = await axios.patch(
+                `${API_BASE_URL}/FELA/events/${eventId}/`,
+                data,
                 getAxiosConfig()
             );
             return { success: true, data: response.data };

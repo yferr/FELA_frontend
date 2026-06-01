@@ -8,7 +8,7 @@
  *  - getItemName(): speaker country reads 'country' directly (was 'country_s')
  *  - All legacy fallbacks to old field names removed
  */
-
+import axios from 'axios'
 import { CountriesAPI, CitiesAPI, AgenciesAPI, SpeakersAPI } from './api.js';
 
 const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org';

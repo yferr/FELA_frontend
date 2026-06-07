@@ -166,7 +166,7 @@ export async function handleLogin(e) {
             currentUser = result.data.user;
 
             // Mostrar mensaje de éxito
-            showAlert(alertDiv, 'Login exitoso. Redirigiendo...', 'success');
+            showAlert(alertDiv, 'Sesión iniciada. Redirigiendo...', 'success');
 
             // Redirigir después de 1 segundo
             setTimeout(() => {
@@ -282,7 +282,7 @@ export async function initAuthButton() {
 
     if (isAuthenticated) {
         // Usuario autenticado
-        authButtonText.textContent = 'Logout';
+        authButtonText.textContent = 'Cerrar sesión';
         authButton.onclick = handleLogout;
 
          // Mostrar pestaña de superusuario si es superuser
@@ -317,7 +317,7 @@ export async function initAuthButton() {
         }
     } else {
         // Usuario NO autenticado
-        authButtonText.textContent = 'Log in';
+        authButtonText.textContent = 'Iniciar sesión';
         authButton.onclick = () => {
             window.location.href = 'login.html';
         };

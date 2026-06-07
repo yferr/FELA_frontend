@@ -359,9 +359,12 @@ body {
     color: #000000;
 }
 
-p {
-	margin: 20px;    
-	padding: 5px;    
+/* Scoped to content sections only — keeps Leaflet popups unaffected */
+#home-container p,
+#about-container p,
+#superuser-container p {
+    margin: 20px;
+    padding: 5px;
 }
 
 h1 {
@@ -387,10 +390,14 @@ h6 {
 h3 {
 	margin-left: 15px;
 }
-h4 {
-	color: #667eea;
-	margin-top: 15px;
-	margin-left: 15px;
+
+/* Scoped: avoids bleeding into Leaflet popup h4 elements */
+#home-container h4,
+#about-container h4,
+#superuser-container h4 {
+    color: #667eea;
+    margin-top: 15px;
+    margin-left: 15px;
 }
 
 h5 {
@@ -452,15 +459,172 @@ h5 {
 	padding-top: 15px;
 }
 
-/* POPUP EDIT/DELETE ACTIONS */
+/* =============================================================
+   COUNT MARKERS — L.divIcon with centered numeric label
+   ============================================================= */
+
+.fela-count-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.92);
+    font-family: 'Arial', sans-serif;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    line-height: 1;
+    user-select: none;
+}
+
+.fela-count-marker:hover {
+    transform: scale(1.12);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    border-color: white;
+}
+
+/* =============================================================
+   MAP TOOLTIPS (hover counts)
+   ============================================================= */
+
+.fela-tooltip {
+    background: rgba(26, 26, 46, 0.9);
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.fela-tooltip::before {
+    border-top-color: rgba(26, 26, 46, 0.9) !important;
+}
+
+/* =============================================================
+   POPUP CONTENT — DOM-built event and speaker popups
+   (createEventsGroupPopup / createSpeakerPopupContent in app.js)
+   ============================================================= */
+
+.leaflet-popup-content {
+    margin: 10px 14px;
+    line-height: 1.4;
+}
+
+/* --- Event popup wrapper --- */
+.popup-event {
+    min-width: 260px;
+    max-width: 400px;
+    font-size: 0.85rem;
+}
+
+.popup-place {
+    font-size: 0.78rem;
+    color: #888;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #eee;
+}
+
+/* Each event card inside a grouped marker */
+.popup-event-item {
+    padding: 10px 0 8px 0;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.popup-event-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* Override global h4 rule inside popups */
+.popup-event-item h4 {
+    color: #1a1a2e;
+    font-size: 0.88rem;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.3;
+}
+
+.popup-meta {
+    font-size: 0.75rem;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.popup-agencies {
+    font-size: 0.75rem;
+    color: #555;
+    margin-bottom: 6px;
+    font-style: italic;
+}
+
+.popup-presentation {
+    background: #f8f9ff;
+    border-left: 3px solid #667eea;
+    padding: 5px 8px;
+    margin: 6px 0 0 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.8rem;
+}
+
+.popup-presentation strong {
+    color: #444;
+    font-size: 0.8rem;
+    display: block;
+    margin-bottom: 3px;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.popup-speaker {
+    margin: 3px 0;
+    color: #555;
+    font-size: 0.78rem;
+}
+
+.popup-speaker .speaker-details {
+    color: #888;
+    font-size: 0.75rem;
+}
+
+.popup-lang {
+    font-size: 0.73rem;
+    color: #777;
+    margin-top: 3px;
+}
+
+.popup-url a {
+    font-size: 0.75rem;
+    color: #667eea;
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 3px;
+}
+
+.popup-url a:hover {
+    text-decoration: underline;
+}
+
+/* --- Action buttons row --- */
 .popup-actions {
     display: flex;
     gap: 6px;
+    flex-wrap: wrap;
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px solid #eee;
 }
 
+.popup-add-btn,
 .popup-edit-btn,
 .popup-delete-btn {
     font-size: 11px;
@@ -470,6 +634,17 @@ h5 {
     cursor: pointer;
     font-weight: 500;
     transition: background 0.15s;
+}
+
+.popup-add-btn {
+    background: #e6f4ea;
+    border-color: #34a853;
+    color: #1e8e3e;
+}
+
+.popup-add-btn:hover {
+    background: #34a853;
+    color: white;
 }
 
 .popup-edit-btn {
@@ -492,6 +667,57 @@ h5 {
 .popup-delete-btn:hover {
     background: #e53935;
     color: white;
+}
+
+/* --- Speaker popup --- */
+.popup-speaker-cluster {
+    min-width: 220px;
+    max-width: 380px;
+    font-size: 0.85rem;
+}
+
+.popup-speaker-cluster h3 {
+    font-size: 0.95rem;
+    color: #1a1a2e;
+    margin: 0 0 10px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #eee;
+}
+
+.popup-speaker-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.82rem;
+}
+
+.popup-speaker-item:last-child {
+    border-bottom: none;
+}
+
+.speaker-header {
+    font-size: 0.85rem;
+    margin-bottom: 3px;
+}
+
+.speaker-location {
+    font-size: 0.75rem;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.speaker-presentations {
+    margin-top: 4px;
+}
+
+.speaker-pres-item {
+    font-size: 0.75rem;
+    color: #555;
+    padding: 2px 0;
+}
+
+.pres-event {
+    color: #888;
+    font-size: 0.72rem;
 }
 
 /* IMPORT DEL CSS DE ADMINISTRACIÓN */

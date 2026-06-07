@@ -172,14 +172,14 @@ function handleGlobalSpeakerSelect(speakerData, type, presentationIndex, speaker
         countryInput.value = speakerData.country ?? '';
         countryInput.disabled = true;
         countryInput.style.backgroundColor = '#f0f0f0';
-        countryInput.title = 'Locked — existing speaker';
+        countryInput.title = 'Bloqueado — ponente existente';
     }
     if (agencyInput) {
         // CHANGED: .agency is now a plain string
         agencyInput.value = speakerData.agency ?? '';
         agencyInput.disabled = true;
         agencyInput.style.backgroundColor = '#f0f0f0';
-        agencyInput.title = 'Locked — existing speaker';
+        agencyInput.title = 'Bloqueado — ponente existente';
     }
 
     let statusIndicator = speakerRow.querySelector('.speaker-status-indicator');
@@ -187,7 +187,7 @@ function handleGlobalSpeakerSelect(speakerData, type, presentationIndex, speaker
         statusIndicator = document.createElement('small');
         statusIndicator.className = 'speaker-status-indicator';
         statusIndicator.style.cssText = 'display:block;color:#28a745;font-size:0.8rem;margin-top:4px;';
-        statusIndicator.textContent = '✓ Existing speaker in DB';
+        statusIndicator.textContent = '✓ Ponente existente en la BD';
         if (nameInput?.parentNode) nameInput.parentNode.appendChild(statusIndicator);
     }
 }
@@ -223,7 +223,7 @@ async function handleGlobalSpeakerCountrySelect(data, type, presentationIndex, s
 
     if (type === 'nominatim') {
         statusIndicator.style.color = '#ffc107';
-        statusIndicator.innerHTML = '⏳ Creating country in DB...';
+        statusIndicator.innerHTML = '⏳ Creando país en la BD...';
         countryInput.disabled = true;
 
         try {
@@ -238,7 +238,7 @@ async function handleGlobalSpeakerCountrySelect(data, type, presentationIndex, s
                 updateState(countryData);
                 countryInput.value = data.name;
                 statusIndicator.style.color = '#28a745';
-                statusIndicator.innerHTML = `✅ Created: ${data.name}`;
+                statusIndicator.innerHTML = `✅ Creado: ${data.name}`;
                 countryInput.style.backgroundColor = '#e7f5e7';
             } else {
                 // May already exist
@@ -249,7 +249,7 @@ async function handleGlobalSpeakerCountrySelect(data, type, presentationIndex, s
                     updateState(countryData);
                     countryInput.value = existing.country;
                     statusIndicator.style.color = '#17a2b8';
-                    statusIndicator.innerHTML = `ℹ️ Existing: ${existing.country}`;
+                    statusIndicator.innerHTML = `ℹ️ Existente: ${existing.country}`;
                     countryInput.disabled = true;
                     countryInput.style.backgroundColor = '#e7f5f5';
                 } else {
@@ -315,7 +315,7 @@ function applySpeakerFieldsFromData(fields, speakerData, options = {}) {
         if (lockFields) {
             nameInput.disabled = true;
             nameInput.style.backgroundColor = '#f0f0f0';
-            nameInput.title = 'Locked — existing speaker';
+            nameInput.title = 'Bloqueado — ponente existente';
         }
     }
 
@@ -325,7 +325,7 @@ function applySpeakerFieldsFromData(fields, speakerData, options = {}) {
         if (lockFields) {
             countryInput.disabled = true;
             countryInput.style.backgroundColor = '#e7f5e7';
-            countryInput.title = 'Locked — existing speaker';
+            countryInput.title = 'Bloqueado — ponente existente';
         }
         const countryIndicator = countryInput.parentNode.querySelector('.country-validation-status');
         if (countryIndicator) {
@@ -340,7 +340,7 @@ function applySpeakerFieldsFromData(fields, speakerData, options = {}) {
         if (lockFields) {
             agencyInput.disabled = true;
             agencyInput.style.backgroundColor = '#f0f0f0';
-            agencyInput.title = 'Locked — existing speaker';
+            agencyInput.title = 'Bloqueado — ponente existente';
         }
     }
 
@@ -352,7 +352,7 @@ function applySpeakerFieldsFromData(fields, speakerData, options = {}) {
             const indicator = document.createElement('small');
             indicator.className = 'speaker-status-indicator';
             indicator.style.cssText = 'display:block;color:#28a745;font-size:0.85rem;margin-top:4px;font-weight:500;';
-            indicator.innerHTML = '✓ Existing speaker in DB';
+            indicator.innerHTML = '✓ Ponente existente en la BD';
             container.appendChild(indicator);
         }
     }
@@ -367,13 +367,13 @@ function updateCountryValidationIndicator(countryInput, status, customMessage = 
     if (!indicator) return;
 
     const cfg = {
-        validating: { color: '#ffc107', icon: '⏳', text: 'Validating...' },
-        validated:  { color: '#28a745', icon: '✅', text: 'Country validated' },
-        error:      { color: '#dc3545', icon: '⚠️', text: 'Validation error' },
-        notfound:   { color: '#dc3545', icon: '⚠️', text: 'Not found — select from menu' },
-        typing:     { color: '#6c757d', icon: '⌨️', text: 'Typing...' },
-        unvalidated:{ color: '#6c757d', icon: '❓', text: 'Not validated' }
-    }[status] ?? { color: '#6c757d', icon: '❓', text: 'Not validated' };
+        validating: { color: '#ffc107', icon: '⏳', text: 'Validando...' },
+        validated:  { color: '#28a745', icon: '✅', text: 'País validado' },
+        error:      { color: '#dc3545', icon: '⚠️', text: 'Error de validación' },
+        notfound:   { color: '#dc3545', icon: '⚠️', text: 'No encontrado — selecciona del menú' },
+        typing:     { color: '#6c757d', icon: '⌨️', text: 'Escribiendo...' },
+        unvalidated:{ color: '#6c757d', icon: '❓', text: 'Sin validar' }
+    }[status] ?? { color: '#6c757d', icon: '❓', text: 'Sin validar' };
 
     indicator.style.color = cfg.color;
     indicator.textContent = customMessage ?? `${cfg.icon} ${cfg.text}`;
@@ -398,7 +398,7 @@ function createSpeakerNameAutocomplete(inputElement, onSelectCallback) {
 
 export function initEventForm(container) {
     if (!canEdit()) {
-        container.innerHTML = `<div class="alert-inline error"><p>⛔ No permissions to create or edit events.</p></div>`;
+        container.innerHTML = `<div class="alert-inline error"><p>⛔ Sin permisos para crear o editar eventos.</p></div>`;
         return;
     }
     resetFormState();
@@ -411,46 +411,46 @@ function generateFormHTML() {
     return `
         <form id="event-complete-form" class="event-form">
             <div class="form-section">
-                <h4 class="form-section-title">📅 Event Information</h4>
+                <h4 class="form-section-title">📅 Información del Evento</h4>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="event-country">Event country *</label>
-                        <input type="text" id="event-country" class="form-control autocomplete-input" placeholder="Type to search..." required>
+                        <label for="event-country">País del evento *</label>
+                        <input type="text" id="event-country" class="form-control autocomplete-input" placeholder="Escribe para buscar..." required>
                         <div id="country-coords" class="coords-display" style="display:none;">
                             <span class="coord-value" id="country-lat">Lat: -</span>
                             <span class="coord-value" id="country-lon">Lon: -</span>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="event-city">Event city *</label>
-                        <input type="text" id="event-city" class="form-control autocomplete-input" placeholder="Select a country first" disabled required>
+                        <label for="event-city">Ciudad del evento *</label>
+                        <input type="text" id="event-city" class="form-control autocomplete-input" placeholder="Selecciona primero un país" disabled required>
                         <div id="city-coords" class="coords-display" style="display:none;">
                             <span class="coord-value" id="city-lat">Lat: -</span>
                             <span class="coord-value" id="city-lon">Lon: -</span>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="event-date">Date</label>
-                        <input type="text" id="event-date" class="form-control" placeholder="e.g. 15-20 March 2025">
+                        <label for="event-date">Fecha</label>
+                        <input type="text" id="event-date" class="form-control" placeholder="ej. 15-20 Marzo 2025">
                     </div>
                     <div class="form-group">
-                        <label for="event-year">Year *</label>
+                        <label for="event-year">Año *</label>
                         <input type="number" id="event-year" class="form-control" placeholder="2025" min="2000" max="2100" required>
                     </div>
                     <div class="form-group">
-                        <label for="event-type">Event type</label>
-                        <input type="text" id="event-type" class="form-control" placeholder="e.g. Conference, Workshop, Webinar">
+                        <label for="event-type">Tipo de evento</label>
+                        <input type="text" id="event-type" class="form-control" placeholder="ej. Conferencia, Taller, Webinar">
                     </div>
                     <div class="form-group" style="grid-column:1/-1;">
-                        <label for="event-title">Event title *</label>
-                        <input type="text" id="event-title" class="form-control" placeholder="Full event name" required>
+                        <label for="event-title">Título del evento *</label>
+                        <input type="text" id="event-title" class="form-control" placeholder="Nombre completo del evento" required>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="event-agency-input">Organising agencies</label>
+                    <label for="event-agency-input">Organismos organizadores</label>
                     <div style="display:flex;gap:10px;">
-                        <input type="text" id="event-agency-input" class="form-control autocomplete-input" placeholder="Type and press Enter">
-                        <button type="button" id="add-agency-btn" class="btn btn-outline-secondary">➕ Add</button>
+                        <input type="text" id="event-agency-input" class="form-control autocomplete-input" placeholder="Escribe y pulsa Enter">
+                        <button type="button" id="add-agency-btn" class="btn btn-outline-secondary">➕ Agregar</button>
                     </div>
                     <div id="agencies-chips" class="chips-container"></div>
                 </div>
@@ -458,15 +458,15 @@ function generateFormHTML() {
 
             <div class="form-section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                    <h4 class="form-section-title" style="margin:0;">📋 Presentations</h4>
-                    <button type="button" id="add-presentation-btn" class="add-button">➕ Add Presentation</button>
+                    <h4 class="form-section-title" style="margin:0;">📋 Presentaciones</h4>
+                    <button type="button" id="add-presentation-btn" class="add-button">➕ Agregar Presentación</button>
                 </div>
                 <div id="presentations-container" class="presentations-list"></div>
             </div>
 
             <div class="form-buttons">
-                <button type="button" id="cancel-form-btn" class="btn-cancel">❌ Cancel</button>
-                <button type="submit" id="submit-form-btn" class="btn-save">💾 Save Event</button>
+                <button type="button" id="cancel-form-btn" class="btn-cancel">❌ Cancelar</button>
+                <button type="submit" id="submit-form-btn" class="btn-save">💾 Guardar Evento</button>
             </div>
             <div id="form-alert" class="alert-inline" style="display:none;margin-top:20px;"></div>
         </form>
@@ -477,34 +477,34 @@ function generatePresentationHTML(index) {
     return `
         <div class="presentation-card" data-presentation-index="${index}">
             <div class="presentation-header">
-                <span class="presentation-number">Presentation #${index + 1}</span>
+                <span class="presentation-number">Presentación #${index + 1}</span>
             </div>
             <div class="form-grid">
                 <div class="form-group" style="grid-column:1/-1;">
-                    <label>Presentation title *</label>
-                    <input type="text" class="form-control presentation-title" data-presentation-index="${index}" placeholder="Title of the talk or paper" required>
+                    <label>Título de la presentación *</label>
+                    <input type="text" class="form-control presentation-title" data-presentation-index="${index}" placeholder="Título de la ponencia" required>
                 </div>
                 <div class="form-group">
-                    <label>Languages</label>
+                    <label>Idiomas</label>
                     <div style="display:flex;gap:10px;">
-                        <input type="text" class="form-control language-input" data-presentation-index="${index}" placeholder="e.g. Spanish, English">
+                        <input type="text" class="form-control language-input" data-presentation-index="${index}" placeholder="ej. Español, Inglés">
                         <button type="button" class="btn btn-outline-secondary add-language-btn" data-index="${index}">➕</button>
                     </div>
                     <div class="chips-container languages-chips" data-presentation-index="${index}"></div>
                 </div>
                 <div class="form-group">
-                    <label>Document URL</label>
+                    <label>URL del documento</label>
                     <input type="url" class="form-control presentation-url" data-presentation-index="${index}" placeholder="https://...">
                 </div>
                 <div class="form-group" style="grid-column:1/-1;">
-                    <label>Observations</label>
-                    <textarea class="form-control presentation-observations" data-presentation-index="${index}" rows="2" placeholder="Additional notes"></textarea>
+                    <label>Observaciones</label>
+                    <textarea class="form-control presentation-observations" data-presentation-index="${index}" rows="2" placeholder="Notas adicionales"></textarea>
                 </div>
             </div>
             <div style="margin-top:15px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                    <label style="margin:0;font-weight:600;">👥 Speakers</label>
-                    <button type="button" class="btn btn-outline-secondary add-speaker-btn" data-presentation-index="${index}">➕ Add Speaker</button>
+                    <label style="margin:0;font-weight:600;">👥 Ponentes</label>
+                    <button type="button" class="btn btn-outline-secondary add-speaker-btn" data-presentation-index="${index}">➕ Agregar Ponente</button>
                 </div>
                 <div class="speakers-list" data-presentation-index="${index}">
                     ${generateSpeakerRowHTML(index, 0)}
@@ -519,13 +519,13 @@ function generateSpeakerRowHTML(presentationIndex, speakerIndex) {
         <div class="speaker-row" data-presentation-index="${presentationIndex}" data-speaker-index="${speakerIndex}">
             <input type="hidden" class="speaker-id" data-presentation-index="${presentationIndex}" data-speaker-index="${speakerIndex}" value="">
             <div class="form-group">
-                <input type="text" class="form-control speaker-name" data-presentation-index="${presentationIndex}" data-speaker-index="${speakerIndex}" placeholder="Speaker name *" required>
+                <input type="text" class="form-control speaker-name" data-presentation-index="${presentationIndex}" data-speaker-index="${speakerIndex}" placeholder="Nombre del ponente *" required>
             </div>
             <div class="form-group">
-                <input type="text" class="form-control speaker-country autocomplete-input" data-presentation-index="${presentationIndex}" data-speaker-index="${speakerIndex}" placeholder="Country *" required>
+                <input type="text" class="form-control speaker-country autocomplete-input" data-presentation-index="${presentationIndex}" data-speaker-index="${speakerIndex}" placeholder="País *" required>
             </div>
             <div class="form-group">
-                <input type="text" class="form-control speaker-agency autocomplete-input" data-presentation-index="${presentationIndex}" data-speaker-index="${speakerIndex}" placeholder="Organisation">
+                <input type="text" class="form-control speaker-agency autocomplete-input" data-presentation-index="${presentationIndex}" data-speaker-index="${speakerIndex}" placeholder="Organismo">
             </div>
             <button type="button" class="remove-speaker" data-presentation-index="${presentationIndex}" data-speaker-index="${speakerIndex}">🗑️</button>
         </div>
@@ -731,7 +731,7 @@ function attachEventListeners() {
     form.addEventListener('submit', handleFormSubmit);
 
     document.getElementById('cancel-form-btn').addEventListener('click', () => {
-        if (confirm('Cancel? Changes will be lost.')) {
+        if (confirm('¿Cancelar? Los cambios se perderán.')) {
             resetFormState();
             initEventForm(document.getElementById('editor-content'));
         }
@@ -749,7 +749,7 @@ function attachEventListeners() {
 
     document.getElementById('add-presentation-btn').addEventListener('click', () => {
         if (formState.presentations.length >= MAX_PRESENTATIONS) {
-            showFormAlert(`Max ${MAX_PRESENTATIONS} presentations allowed`, 'warning');
+            showFormAlert(`Máximo ${MAX_PRESENTATIONS} presentaciones permitidas`, 'warning');
             return;
         }
         formState.presentations.push({ title: '', languages: [], url: '', observations: '', speakers: [{ name: '', country: null, agency: '' }] });
@@ -761,8 +761,8 @@ function attachEventListeners() {
     container.addEventListener('click', (e) => {
         if (e.target.classList.contains('remove-presentation')) {
             const index = parseInt(e.target.dataset.index);
-            if (formState.presentations.length === 1) { showFormAlert('At least one presentation required', 'warning'); return; }
-            if (confirm('Delete this presentation?')) { formState.presentations.splice(index, 1); renderPresentations(); }
+            if (formState.presentations.length === 1) { showFormAlert('Se requiere al menos una presentación', 'warning'); return; }
+            if (confirm('¿Eliminar esta presentación?')) { formState.presentations.splice(index, 1); renderPresentations(); }
         }
         if (e.target.classList.contains('add-speaker-btn')) {
             const presIndex = parseInt(e.target.dataset.presentationIndex);
@@ -778,7 +778,7 @@ function attachEventListeners() {
             const presIndex    = parseInt(e.target.dataset.presentationIndex);
             const speakerIndex = parseInt(e.target.dataset.speakerIndex);
             if (formState.presentations[presIndex].speakers.length === 1) {
-                showFormAlert('At least one speaker per presentation required', 'warning'); return;
+                showFormAlert('Se requiere al menos un ponente por presentación', 'warning'); return;
             }
             formState.presentations[presIndex].speakers.splice(speakerIndex, 1);
             renderPresentations();
@@ -854,21 +854,21 @@ function collectFormData() {
 }
 
 function validateEventData(data) {
-    if (!data.country)     return { valid: false, error: 'Country is required' };
-    if (!data.city)        return { valid: false, error: 'City is required' };
-    if (!data.year || data.year < 2000) return { valid: false, error: 'A valid year is required' };
-    if (!data.event_title) return { valid: false, error: 'Event title is required' };
-    if (!data.country_lat || !data.country_lon) return { valid: false, error: 'Country coordinates missing' };
-    if (!data.city_lat    || !data.city_lon)    return { valid: false, error: 'City coordinates missing' };
-    if (!data.presentations?.length)            return { valid: false, error: 'At least one presentation required' };
+    if (!data.country)     return { valid: false, error: 'El país es obligatorio' };
+    if (!data.city)        return { valid: false, error: 'La ciudad es obligatoria' };
+    if (!data.year || data.year < 2000) return { valid: false, error: 'Se requiere un año válido' };
+    if (!data.event_title) return { valid: false, error: 'El título del evento es obligatorio' };
+    if (!data.country_lat || !data.country_lon) return { valid: false, error: 'Coordenadas del país no disponibles' };
+    if (!data.city_lat    || !data.city_lon)    return { valid: false, error: 'Coordenadas de la ciudad no disponibles' };
+    if (!data.presentations?.length)            return { valid: false, error: 'Se requiere al menos una presentación' };
 
     for (let i = 0; i < data.presentations.length; i++) {
         const pres = data.presentations[i];
-        if (!pres.title) return { valid: false, error: `Presentation #${i + 1} needs a title` };
-        if (!pres.speakers?.length) return { valid: false, error: `Presentation #${i + 1} needs at least one speaker` };
+        if (!pres.title) return { valid: false, error: `La presentación #${i + 1} requiere un título` };
+        if (!pres.speakers?.length) return { valid: false, error: `La presentación #${i + 1} requiere al menos un ponente` };
         for (let j = 0; j < pres.speakers.length; j++) {
-            if (!pres.speakers[j].name)    return { valid: false, error: `Speaker #${j + 1} in presentation #${i + 1} needs a name` };
-            if (!pres.speakers[j].country) return { valid: false, error: `Speaker #${j + 1} in presentation #${i + 1} needs a country` };
+            if (!pres.speakers[j].name)    return { valid: false, error: `El ponente #${j + 1} de la presentación #${i + 1} requiere un nombre` };
+            if (!pres.speakers[j].country) return { valid: false, error: `El ponente #${j + 1} de la presentación #${i + 1} requiere un país` };
         }
     }
     return { valid: true };
@@ -882,22 +882,22 @@ async function handleFormSubmit(e) {
     if (!validation.valid) { showFormAlert(validation.error, 'error'); return; }
 
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="loading-spinner"></span> Saving...';
+    submitBtn.innerHTML = '<span class="loading-spinner"></span> Guardando...';
 
     try {
         const result = await EventsAPI.createComplete(eventData);
         if (result.success) {
-            showFormAlert('✅ Event created successfully', 'success');
+            showFormAlert('✅ Evento creado correctamente', 'success');
             setTimeout(() => window.location.reload(), 2000);
         } else {
             showFormAlert('❌ Error: ' + result.error, 'error');
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '💾 Save Event';
+            submitBtn.innerHTML = '💾 Guardar Evento';
         }
     } catch (error) {
-        showFormAlert('❌ Unexpected error: ' + error.message, 'error');
+        showFormAlert('❌ Error inesperado: ' + error.message, 'error');
         submitBtn.disabled = false;
-        submitBtn.innerHTML = '💾 Save Event';
+        submitBtn.innerHTML = '💾 Guardar Evento';
     }
 }
 
@@ -912,40 +912,40 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
 
     container.innerHTML = `
         <form id="add-presentation-form" class="event-form">
-            <button type="button" class="btn btn-outline-secondary" id="back-to-add-options" style="margin-bottom:20px;">← Back</button>
+            <button type="button" class="btn btn-outline-secondary" id="back-to-add-options" style="margin-bottom:20px;">← Volver</button>
 
             <div class="form-section">
-                <h4 class="form-section-title">📅 Select Event</h4>
+                <h4 class="form-section-title">📅 Seleccionar Evento</h4>
                 <div class="form-group">
-                    <label for="add-pres-event">Event *</label>
+                    <label for="add-pres-event">Evento *</label>
                     <input type="text" id="add-pres-event" class="form-control autocomplete-input"
-                        placeholder="Search for event..."
+                        placeholder="Buscar evento..."
                         ${prefilledEvent ? 'disabled' : ''} required>
-                    <small class="form-text">${prefilledEvent ? '✓ Pre-filled from map' : 'Type to search existing events'}</small>
+                    <small class="form-text">${prefilledEvent ? '✓ Prellenado desde el mapa' : 'Escribe para buscar eventos'}</small>
                 </div>
             </div>
 
             <div class="form-section">
-                <h4 class="form-section-title">📋 Presentation Data</h4>
+                <h4 class="form-section-title">📋 Datos de la Presentación</h4>
                 <div class="form-grid">
                     <div class="form-group" style="grid-column:1/-1;">
-                        <label for="add-pres-title">Presentation title *</label>
-                        <input type="text" id="add-pres-title" class="form-control" placeholder="Title of the talk" required>
+                        <label for="add-pres-title">Título de la presentación *</label>
+                        <input type="text" id="add-pres-title" class="form-control" placeholder="Título de la ponencia" required>
                     </div>
                     <div class="form-group">
-                        <label>Languages</label>
+                        <label>Idiomas</label>
                         <div style="display:flex;gap:10px;">
-                            <input type="text" id="add-pres-language-input" class="form-control" placeholder="e.g. Spanish, English">
+                            <input type="text" id="add-pres-language-input" class="form-control" placeholder="ej. Español, Inglés">
                             <button type="button" id="add-pres-language-btn" class="btn btn-outline-secondary">➕</button>
                         </div>
                         <div id="add-pres-languages-chips" class="chips-container"></div>
                     </div>
                     <div class="form-group">
-                        <label>Document URL</label>
+                        <label>URL del documento</label>
                         <input type="url" id="add-pres-url" class="form-control" placeholder="https://...">
                     </div>
                     <div class="form-group" style="grid-column:1/-1;">
-                        <label>Observations</label>
+                        <label>Observaciones</label>
                         <textarea id="add-pres-observations" class="form-control" rows="2"></textarea>
                     </div>
                 </div>
@@ -953,15 +953,15 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
 
             <div class="form-section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                    <h4 class="form-section-title" style="margin:0;">👥 Speakers</h4>
-                    <button type="button" id="add-pres-add-speaker-btn" class="btn btn-outline-secondary">➕ Add Speaker</button>
+                    <h4 class="form-section-title" style="margin:0;">👥 Ponentes</h4>
+                    <button type="button" id="add-pres-add-speaker-btn" class="btn btn-outline-secondary">➕ Agregar Ponente</button>
                 </div>
                 <div id="add-pres-speakers-list" class="speakers-list"></div>
             </div>
 
             <div class="form-buttons">
-                <button type="button" id="add-pres-cancel-btn" class="btn-cancel">❌ Cancel</button>
-                <button type="submit" id="add-pres-submit-btn" class="btn-save">💾 Save Presentation</button>
+                <button type="button" id="add-pres-cancel-btn" class="btn-cancel">❌ Cancelar</button>
+                <button type="submit" id="add-pres-submit-btn" class="btn-save">💾 Guardar Presentación</button>
             </div>
             <div id="add-pres-alert" class="alert-inline" style="display:none;margin-top:20px;"></div>
         </form>
@@ -1009,16 +1009,16 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                 <div class="form-group">
                     <input type="hidden" class="speaker-id" data-index="${index}" value="${speaker.id || ''}">
                     <input type="text" class="form-control speaker-name" data-index="${index}"
-                        placeholder="Speaker name *" value="${speaker.name}" required>
-                    ${speaker.id ? '<small style="color:#28a745">✓ Existing speaker in DB</small>' : ''}
+                        placeholder="Nombre del ponente *" value="${speaker.name}" required>
+                    ${speaker.id ? '<small style="color:#28a745">✓ Ponente existente en la BD</small>' : ''}
                 </div>
                 <div class="form-group">
                     <input type="text" class="form-control speaker-country autocomplete-input"
-                        data-index="${index}" placeholder="Country *" value="${speaker.country || ''}" required>
+                        data-index="${index}" placeholder="País *" value="${speaker.country || ''}" required>
                 </div>
                 <div class="form-group">
                     <input type="text" class="form-control speaker-agency autocomplete-input"
-                        data-index="${index}" placeholder="Organisation" value="${speaker.agency || ''}">
+                        data-index="${index}" placeholder="Organismo" value="${speaker.agency || ''}">
                 </div>
                 <button type="button" class="remove-speaker" data-index="${index}">🗑️</button>
             `;
@@ -1103,7 +1103,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
             statusInd = document.createElement('small');
             statusInd.className = 'speaker-status-indicator';
             statusInd.style.cssText = 'display:block;color:#28a745;font-size:0.85rem;margin-top:4px;';
-            statusInd.textContent = '✓ Existing speaker in DB';
+            statusInd.textContent = '✓ Ponente existente en la BD';
             if (nameInput?.parentNode) nameInput.parentNode.appendChild(statusInd);
         }
     }
@@ -1127,7 +1127,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
 
         if (type === 'nominatim') {
             statusInd.style.color = '#ffc107';
-            statusInd.innerHTML = '⏳ Creating country...';
+            statusInd.innerHTML = '⏳ Creando país...';
             countryInput.disabled = true;
             try {
                 const createResult = await CountriesAPI.create({ country: data.name, lat: parseFloat(data.lat), lon: parseFloat(data.lon) });
@@ -1136,7 +1136,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                     localFormState.speakers[speakerIndex].countryData = { name: data.name, lat: parseFloat(data.lat), lon: parseFloat(data.lon), isNew: true, createdNow: true };
                     countryInput.value = data.name;
                     statusInd.style.color = '#28a745';
-                    statusInd.innerHTML = `✅ Created: ${data.name}`;
+                    statusInd.innerHTML = `✅ Creado: ${data.name}`;
                     countryInput.style.backgroundColor = '#e7f5e7';
                 } else {
                     const retry = await CountriesAPI.list(data.name);
@@ -1146,7 +1146,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                         localFormState.speakers[speakerIndex].countryData = { name: existing.country, lat: existing.lat, lon: existing.lon, isNew: false, createdNow: false };
                         countryInput.value = existing.country;
                         statusInd.style.color = '#17a2b8';
-                        statusInd.innerHTML = `ℹ️ Existing: ${existing.country}`;
+                        statusInd.innerHTML = `ℹ️ Existente: ${existing.country}`;
                         countryInput.disabled = true;
                     } else {
                         throw new Error(createResult.error);
@@ -1205,13 +1205,13 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
     document.getElementById('add-pres-speakers-list').addEventListener('click', (e) => {
         if (e.target.classList.contains('remove-speaker')) {
             const index = parseInt(e.target.dataset.index);
-            if (localFormState.speakers.length === 1) { showFormAlert('At least one speaker required', 'warning', 'add-pres-alert'); return; }
+            if (localFormState.speakers.length === 1) { showFormAlert('Se requiere al menos un ponente', 'warning', 'add-pres-alert'); return; }
             localFormState.speakers.splice(index, 1);
             renderLocalSpeakers();
         }
     });
     document.getElementById('add-pres-cancel-btn').addEventListener('click', () => {
-        if (confirm('Cancel? Changes will be lost.')) initAddOptionsView(container);
+        if (confirm('¿Cancelar? Los cambios se perderán.')) initAddOptionsView(container);
     });
     document.getElementById('add-presentation-form').addEventListener('submit', handleAddPresentationSubmit);
 
@@ -1224,11 +1224,11 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
         e.preventDefault();
         const submitBtn = document.getElementById('add-pres-submit-btn');
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="loading-spinner"></span> Saving...';
+        submitBtn.innerHTML = '<span class="loading-spinner"></span> Guardando...';
 
         try {
             if (!selectedEvent?.id) {
-                showFormAlert('❌ Select an event', 'error', 'add-pres-alert');
+                showFormAlert('❌ Selecciona un evento', 'error', 'add-pres-alert');
                 return;
             }
 
@@ -1236,14 +1236,14 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
             const url          = document.getElementById('add-pres-url').value.trim();
             const observations = document.getElementById('add-pres-observations').value.trim();
 
-            if (!title) { showFormAlert('❌ Title is required', 'error', 'add-pres-alert'); return; }
+            if (!title) { showFormAlert('❌ El título es obligatorio', 'error', 'add-pres-alert'); return; }
 
             // Check for duplicate title within the same event
             const existingPres = await PresentationsAPI.list({ event_id: selectedEvent.id });
             if (existingPres.success) {
                 const pList = existingPres.data.results || existingPres.data || [];
                 if (pList.find(p => p.title.toLowerCase() === title.toLowerCase())) {
-                    showFormAlert(`❌ A presentation titled "${title}" already exists in this event.`, 'error', 'add-pres-alert');
+                    showFormAlert(`❌ Ya existe una presentación con el título "${title}" en este evento.`, 'error', 'add-pres-alert');
                     return;
                 }
             }
@@ -1260,7 +1260,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                 const agency  = row.querySelector('.speaker-agency')?.value?.trim()  || '';
 
                 if (!name || !country) {
-                    showFormAlert(`❌ Speaker #${i + 1} needs name and country`, 'error', 'add-pres-alert');
+                    showFormAlert(`❌ El ponente #${i + 1} requiere nombre y país`, 'error', 'add-pres-alert');
                     return;
                 }
 
@@ -1268,7 +1268,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
 
                 // Lazy country validation
                 if (!speakerData.countryData?.lat) {
-                    showFormAlert(`🔍 Validating country "${country}"...`, 'info', 'add-pres-alert');
+                    showFormAlert(`🔍 Validando país "${country}"...`, 'info', 'add-pres-alert');
                     const validation = await ensureCountryDataComplete(speakerData, index, localFormState);
                     if (!validation.success) {
                         showFormAlert(validation.error, 'error', 'add-pres-alert');
@@ -1278,7 +1278,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                 speakers.push(speakerData);
             }
 
-            if (!speakers.length) { showFormAlert('❌ At least one speaker required', 'error', 'add-pres-alert'); return; }
+            if (!speakers.length) { showFormAlert('❌ Se requiere al menos un ponente', 'error', 'add-pres-alert'); return; }
 
             // Create presentation
             // CHANGED: 'event' is the integer ID (was 'event_title' as string)
@@ -1291,7 +1291,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
             });
 
             if (!presResult.success) {
-                showFormAlert('❌ Error creating presentation: ' + presResult.error, 'error', 'add-pres-alert');
+                showFormAlert('❌ Error al crear la presentación: ' + presResult.error, 'error', 'add-pres-alert');
                 return;
             }
 
@@ -1314,7 +1314,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                             agency:  speakerData.agency     // ← was agency_s
                         });
                         if (!newSpeaker.success) {
-                            showFormAlert(`⚠️ Could not create speaker "${speakerData.name}": ${newSpeaker.error}`, 'warning', 'add-pres-alert');
+                            showFormAlert(`⚠️ No se pudo crear el ponente "${speakerData.name}": ${newSpeaker.error}`, 'warning', 'add-pres-alert');
                             continue;
                         }
                         speaker = newSpeaker.data;
@@ -1323,14 +1323,14 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                 await PresentationsAPI.addSpeaker(presentationId, speaker.id);
             }
 
-            showFormAlert('✅ Presentation added successfully', 'success', 'add-pres-alert');
+            showFormAlert('✅ Presentación añadida correctamente', 'success', 'add-pres-alert');
             setTimeout(() => window.location.reload(), 2000);
 
         } catch (error) {
-            showFormAlert('❌ Unexpected error: ' + error.message, 'error', 'add-pres-alert');
+            showFormAlert('❌ Error inesperado: ' + error.message, 'error', 'add-pres-alert');
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '💾 Save Presentation';
+            submitBtn.innerHTML = '💾 Guardar Presentación';
         }
     }
 }
@@ -1346,45 +1346,45 @@ export function initAddSpeakerForm(container, prefilledPresentation = null) {
 
     container.innerHTML = `
         <form id="add-speaker-form" class="event-form">
-            <button type="button" class="btn btn-outline-secondary" id="back-to-add-options-2" style="margin-bottom:20px;">← Back</button>
+            <button type="button" class="btn btn-outline-secondary" id="back-to-add-options-2" style="margin-bottom:20px;">← Volver</button>
 
             <div class="form-section">
-                <h4 class="form-section-title">📋 Select Presentation</h4>
+                <h4 class="form-section-title">📋 Seleccionar Presentación</h4>
                 <div class="form-group">
-                    <label for="add-speaker-pres">Presentation *</label>
+                    <label for="add-speaker-pres">Presentación *</label>
                     <input type="text" id="add-speaker-pres" class="form-control autocomplete-input"
-                        placeholder="Search presentation..."
+                        placeholder="Buscar presentación..."
                         ${prefilledPresentation ? 'disabled' : ''} required>
-                    <small class="form-text">${prefilledPresentation ? '✓ Pre-filled' : 'Type to search'}</small>
+                    <small class="form-text">${prefilledPresentation ? '✓ Prellenado' : 'Escribe para buscar'}</small>
                 </div>
             </div>
 
             <div class="form-section">
-                <h4 class="form-section-title">👤 Speaker Data</h4>
+                <h4 class="form-section-title">👤 Datos del Ponente</h4>
                 <div class="form-grid">
                     <div class="form-group" style="grid-column:1/-1;">
-                        <label for="add-speaker-name">Speaker name *</label>
+                        <label for="add-speaker-name">Nombre del ponente *</label>
                         <input type="text" id="add-speaker-name" class="form-control autocomplete-input"
-                            placeholder="Search or type full name" required>
-                        <small class="form-text" style="color:#6c757d;">💡 Existing speakers auto-fill fields</small>
+                            placeholder="Busca o escribe el nombre completo" required>
+                        <small class="form-text" style="color:#6c757d;">💡 Los ponentes existentes rellenan los campos</small>
                     </div>
                     <div class="form-group">
-                        <label for="add-speaker-country">Country *</label>
+                        <label for="add-speaker-country">País *</label>
                         <input type="text" id="add-speaker-country" class="form-control autocomplete-input"
-                            placeholder="Speaker country" required>
-                        <small class="country-validation-status" style="display:block;margin-top:4px;font-size:0.8rem;color:#6c757d;">❓ Not validated</small>
+                            placeholder="País del ponente" required>
+                        <small class="country-validation-status" style="display:block;margin-top:4px;font-size:0.8rem;color:#6c757d;">❓ Sin validar</small>
                     </div>
                     <div class="form-group">
-                        <label for="add-speaker-agency">Organisation</label>
+                        <label for="add-speaker-agency">Organismo</label>
                         <input type="text" id="add-speaker-agency" class="form-control autocomplete-input"
-                            placeholder="Institution or organisation">
+                            placeholder="Institución u organismo">
                     </div>
                 </div>
             </div>
 
             <div class="form-buttons">
-                <button type="button" id="add-speaker-cancel-btn" class="btn-cancel">❌ Cancel</button>
-                <button type="submit" id="add-speaker-submit-btn" class="btn-save">💾 Add Speaker</button>
+                <button type="button" id="add-speaker-cancel-btn" class="btn-cancel">❌ Cancelar</button>
+                <button type="submit" id="add-speaker-submit-btn" class="btn-save">💾 Agregar Ponente</button>
             </div>
             <div id="add-speaker-alert" class="alert-inline" style="display:none;margin-top:20px;"></div>
         </form>
@@ -1410,10 +1410,10 @@ export function initAddSpeakerForm(container, prefilledPresentation = null) {
             const result = await PresentationsAPI.search(query);
             const pList = result.success ? (result.data || []) : [];
             this.results = pList.map(pres => {
-                const speakersNames = pres.speakers?.map(s => s.name).join(', ') || 'No speakers';
+                const speakersNames = pres.speakers?.map(s => s.name).join(', ') || 'Sin ponentes';
                 return {
                     type: 'local', data: pres,
-                    display: `📋 ${pres.title} | Event: ${pres.event_title} (${pres.event_country}) | Speakers: ${speakersNames}`
+                    display: `📋 ${pres.title} | Evento: ${pres.event_title} (${pres.event_country}) | Ponentes: ${speakersNames}`
                 };
             });
             this.isLoading = false; this.renderResults();
@@ -1449,7 +1449,7 @@ export function initAddSpeakerForm(container, prefilledPresentation = null) {
                         speakerData.country     = data.name;
                         speakerData.countryData = { name: data.name, lat: parseFloat(data.lat), lon: parseFloat(data.lon), isNew: true, createdNow: true };
                         countryInput.value = data.name;
-                        updateCountryValidationIndicator(countryInput, 'validated', `✅ Created: ${data.name}`);
+                        updateCountryValidationIndicator(countryInput, 'validated', `✅ Creado: ${data.name}`);
                         countryInput.disabled = true;
                         countryInput.style.backgroundColor = '#e7f5e7';
                     } else {
@@ -1459,7 +1459,7 @@ export function initAddSpeakerForm(container, prefilledPresentation = null) {
                             speakerData.country     = ex.country;
                             speakerData.countryData = { name: ex.country, lat: ex.lat, lon: ex.lon, isNew: false, createdNow: false };
                             countryInput.value = ex.country;
-                            updateCountryValidationIndicator(countryInput, 'validated', `ℹ️ Existing: ${ex.country}`);
+                            updateCountryValidationIndicator(countryInput, 'validated', `ℹ️ Existente: ${ex.country}`);
                             countryInput.disabled = true;
                         } else {
                             updateCountryValidationIndicator(countryInput, 'error', cr.error);
@@ -1521,7 +1521,7 @@ export function initAddSpeakerForm(container, prefilledPresentation = null) {
     // Listeners
     document.getElementById('back-to-add-options-2')?.addEventListener('click', () => initAddOptionsView(container));
     document.getElementById('add-speaker-cancel-btn').addEventListener('click', () => {
-        if (confirm('Cancel?')) initAddOptionsView(container);
+        if (confirm('¿Cancelar?')) initAddOptionsView(container);
     });
 
     // -----------------------------------------------------------------------
@@ -1532,20 +1532,20 @@ export function initAddSpeakerForm(container, prefilledPresentation = null) {
         e.preventDefault();
         const submitBtn = document.getElementById('add-speaker-submit-btn');
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="loading-spinner"></span> Saving...';
+        submitBtn.innerHTML = '<span class="loading-spinner"></span> Guardando...';
 
         try {
-            if (!selectedPresentation?.id) { showFormAlert('❌ Select a presentation', 'error', 'add-speaker-alert'); return; }
+            if (!selectedPresentation?.id) { showFormAlert('❌ Selecciona una presentación', 'error', 'add-speaker-alert'); return; }
 
             const name    = nameInput.value.trim();
             const country = countryInput.value.trim();
             const agency  = agencyInput.value.trim();
 
-            if (!name || !country) { showFormAlert('❌ Name and country required', 'error', 'add-speaker-alert'); return; }
+            if (!name || !country) { showFormAlert('❌ Se requieren nombre y país', 'error', 'add-speaker-alert'); return; }
 
             // Lazy country validation
             if (!speakerData.countryData?.lat) {
-                showFormAlert(`🔍 Validating country "${country}"...`, 'info', 'add-speaker-alert');
+                showFormAlert(`🔍 Validando país "${country}"...`, 'info', 'add-speaker-alert');
                 const tempData = { name, country, countryData: speakerData.countryData, agency };
                 const validation = await ensureCountryDataComplete(tempData, 0, { speakers: [tempData] });
                 if (!validation.success) {
@@ -1572,22 +1572,22 @@ export function initAddSpeakerForm(container, prefilledPresentation = null) {
                         country,   // ← was country_s
                         agency     // ← was agency_s
                     });
-                    if (!newSpeaker.success) { showFormAlert('❌ Error creating speaker: ' + newSpeaker.error, 'error', 'add-speaker-alert'); return; }
+                    if (!newSpeaker.success) { showFormAlert('❌ Error al crear el ponente: ' + newSpeaker.error, 'error', 'add-speaker-alert'); return; }
                     speaker = newSpeaker.data;
                 }
             }
 
             const assocResult = await PresentationsAPI.addSpeaker(selectedPresentation.id, speaker.id);
-            if (!assocResult.success) { showFormAlert('❌ Error linking speaker: ' + assocResult.error, 'error', 'add-speaker-alert'); return; }
+            if (!assocResult.success) { showFormAlert('❌ Error al vincular el ponente: ' + assocResult.error, 'error', 'add-speaker-alert'); return; }
 
-            showFormAlert('✅ Speaker added successfully', 'success', 'add-speaker-alert');
+            showFormAlert('✅ Ponente añadido correctamente', 'success', 'add-speaker-alert');
             setTimeout(() => window.location.reload(), 2000);
 
         } catch (error) {
-            showFormAlert('❌ Unexpected error: ' + error.message, 'error', 'add-speaker-alert');
+            showFormAlert('❌ Error inesperado: ' + error.message, 'error', 'add-speaker-alert');
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '💾 Add Speaker';
+            submitBtn.innerHTML = '💾 Agregar Ponente';
         }
     });
 }
@@ -1905,7 +1905,7 @@ export function initEditPresentationForm(container, presentationData, onBack, on
                     <div class="form-group">
                         <label>Idiomas</label>
                         <div style="display:flex;gap:10px;">
-                            <input type="text" id="edit-pres-lang-input" class="form-control" list="edit-pres-lang-list" placeholder="ej. Español, English...">
+                            <input type="text" id="edit-pres-lang-input" class="form-control" list="edit-pres-lang-list" placeholder="ej. Español, Inglés...">
                             <datalist id="edit-pres-lang-list">
                                 ${[...new Set(availableLanguages)].sort().map(l => `<option value="${escapeVal(l)}"></option>`).join('')}
                             </datalist>
@@ -2161,12 +2161,12 @@ function initAddOptionsView(container) {
     container.innerHTML = `
         <div class="add-options">
             <button class="add-option-btn" data-action="add-presentation">
-                📋 Add Presentation to Existing Event
-                <small>Add a new presentation with speakers to an already created event</small>
+                📋 Agregar Presentación a Evento Existente
+                <small>Añade una nueva presentación con ponentes a un evento ya creado</small>
             </button>
             <button class="add-option-btn" data-action="add-speaker">
-                👤 Add Speaker to Existing Presentation
-                <small>Add a new speaker to an existing presentation</small>
+                👤 Agregar Ponente a Presentación Existente
+                <small>Añade un nuevo ponente a una presentación existente</small>
             </button>
         </div>
     `;

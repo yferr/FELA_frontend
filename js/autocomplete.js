@@ -32,10 +32,16 @@ const NominatimAPI = {
         try {
             const response = await axios.get(`${NOMINATIM_BASE_URL}/search`, {
                 params: { country: query, format: 'json', addressdetails: 1, limit: 5 },
-                headers: { 'Accept-Language': 'es,en' }
+                headers: { 'Accept-Language': 'es,en' },
+                timeout: NOMINATIM_TIMEOUT
             });
             return response.data
-                .filter(item => item.type === 'administrative' || item.class === 'boundary')
+                .filter(item =>
+                    item.class === 'boundary' ||
+                    item.type  === 'administrative' ||
+                    item.type  === 'country' ||
+                    (item.class === 'place' && item.type === 'country')
+                )
                 .map(item => ({
                     name: item.display_name.split(',')[0].trim(),
                     lat: parseFloat(item.lat),
@@ -50,22 +56,33 @@ const NominatimAPI = {
 
     async searchCity(cityQuery, countryName = '') {
         try {
-            const params = { city: cityQuery, format: 'json', addressdetails: 1, limit: 10 };
-            if (countryName) params.country = countryName;
+            const q = countryName ? `${cityQuery}, ${countryName}` : cityQuery;
+            const params = { q, format: 'json', addressdetails: 1, limit: 10 };
 
             const response = await axios.get(`${NOMINATIM_BASE_URL}/search`, {
                 params,
-                headers: { 'Accept-Language': 'es,en' }
+                headers: { 'Accept-Language': 'es,en' },
+                timeout: NOMINATIM_TIMEOUT
             });
+
+            const CITY_TYPES = new Set([
+                'city', 'town', 'village', 'municipality', 'administrative'
+            ]);
+
             return response.data
-                .filter(item => ['city', 'town', 'village', 'municipality'].includes(item.type))
+                .filter(item => CITY_TYPES.has(item.type) || item.class === 'place')
                 .map(item => ({
-                    name: item.address.city || item.address.town || item.address.village || item.name,
-                    country: item.address.country,
+                    name: item.address?.city  ||
+                          item.address?.town  ||
+                          item.address?.village ||
+                          item.address?.municipality ||
+                          item.name,
+                    country: item.address?.country || countryName,
                     lat: parseFloat(item.lat),
                     lon: parseFloat(item.lon),
                     display_name: item.display_name
-                }));
+                }))
+                .filter(item => item.name); // drop entries where name could not be resolved
         } catch (error) {
             console.error('Error searching city in Nominatim:', error);
             return [];

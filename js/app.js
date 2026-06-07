@@ -205,6 +205,25 @@ function normaliseCountry(str) {
 }
 
 // ---------------------------------------------------------------------------
+// Count marker — L.divIcon with centered numeric label
+// Replaces L.circleMarker for all entity layers so counts are visible
+// ---------------------------------------------------------------------------
+
+function createCountMarker(coordinates, count, color) {
+    const size     = Math.max(26, 22 + Math.log2(count + 1) * 4);
+    const fontSize = Math.max(10, Math.round(size * 0.38));
+    const icon = L.divIcon({
+        className:     '',
+        html:          `<div class="fela-count-marker" style="width:${size}px;height:${size}px;background:${color};font-size:${fontSize}px;">${count}</div>`,
+        iconSize:      [size, size],
+        iconAnchor:    [size / 2, size / 2],
+        popupAnchor:   [0, -(size / 2) - 4],
+        tooltipAnchor: [0, -(size / 2) - 4]
+    });
+    return L.marker(coordinates, { icon });
+}
+
+// ---------------------------------------------------------------------------
 // Event markers
 // ---------------------------------------------------------------------------
 
@@ -238,13 +257,14 @@ function displayEventsOnMap(eventsData, countriesGeoJSON, view) {
     });
 
     groups.forEach(({ coordinates, place, events }) => {
-        const marker = L.circleMarker(coordinates, {
-            radius: 8, fillColor: COLOR_EVENT, color: '#fff',
-            weight: 2, opacity: 1, fillOpacity: 0.8
-        });
-        marker.bindPopup(createEventsGroupPopup(place, events), {
-            maxWidth: 420, maxHeight: 400
-        });
+        const count = events.length;
+        const label = view === 'event-city'
+            ? `${place.city} (${place.country}): ${count} evento(s)`
+            : `${place.country}: ${count} evento(s)`;
+
+        const marker = createCountMarker(coordinates, count, COLOR_EVENT);
+        marker.bindTooltip(label, { permanent: false, direction: 'top', className: 'fela-tooltip' });
+        marker.bindPopup(createEventsGroupPopup(place, events), { maxWidth: 420, maxHeight: 400 });
         marker.on('popupopen', () => injectPopupEditButtons(marker));
         eventMarkers.addLayer(marker);
     });
@@ -305,9 +325,10 @@ function displaySpeakersOnMap(eventsData, countriesGeoJSON) {
     });
 
     speakerLocations.forEach(({ coordinates, country, speakers }) => {
-        const marker = L.circleMarker(coordinates, {
-            radius: 6, fillColor: COLOR_SPEAKER, color: '#fff',
-            weight: 2, opacity: 1, fillOpacity: 0.8
+        const count  = speakers.size;
+        const marker = createCountMarker(coordinates, count, COLOR_SPEAKER);
+        marker.bindTooltip(`${country}: ${count} ponente(s)/autor(es)`, {
+            permanent: false, direction: 'top', className: 'fela-tooltip'
         });
         marker.bindPopup(createSpeakerPopupContent(country, speakers), {
             maxWidth: 420, maxHeight: 380
@@ -330,27 +351,34 @@ function displayByLanguage(eventsData, countriesGeoJSON) {
             eventList.forEach(eventData => {
                 const place = eventData.place?.[0];
                 if (!place) return;
-                const matched = Object.values(eventData.titles || {}).some(presList =>
-                    presList.some(p =>
-                        (p.language || []).some(l => normaliseCountry(l) === lang)
-                    )
+
+                // Count presentations in this language from this event
+                let presCount = 0;
+                Object.values(eventData.titles || {}).forEach(presList =>
+                    presList.forEach(p => {
+                        if ((p.language || []).some(l => normaliseCountry(l) === lang)) presCount++;
+                    })
                 );
-                if (!matched) return;
+                if (presCount === 0) return;
+
                 const coordinates = getCoordinatesByCountry(place.country, countriesGeoJSON);
                 if (!coordinates) return;
                 if (!groups.has(place.country)) {
-                    groups.set(place.country, { coordinates, place, events: [] });
+                    groups.set(place.country, { coordinates, place, events: [], presCount: 0 });
                 }
-                groups.get(place.country).events.push({ eventTitle, year, eventData });
+                const g = groups.get(place.country);
+                g.events.push({ eventTitle, year, eventData });
+                g.presCount += presCount;
             });
         });
     });
 
-    groups.forEach(({ coordinates, place, events }) => {
-        const marker = L.circleMarker(coordinates, {
-            radius: 8, fillColor: COLOR_EVENT, color: '#fff',
-            weight: 2, opacity: 1, fillOpacity: 0.8
-        });
+    groups.forEach(({ coordinates, place, events, presCount }) => {
+        const marker = createCountMarker(coordinates, presCount, COLOR_EVENT);
+        marker.bindTooltip(
+            `${activeFilters.language} — ${place.country}: ${presCount} presentación(es)`,
+            { permanent: false, direction: 'top', className: 'fela-tooltip' }
+        );
         marker.bindPopup(createEventsGroupPopup(place, events), { maxWidth: 420, maxHeight: 400 });
         marker.on('popupopen', () => injectPopupEditButtons(marker));
         eventMarkers.addLayer(marker);
@@ -386,10 +414,12 @@ function displayByAgency(eventsData, countriesGeoJSON) {
     });
 
     groups.forEach(({ coordinates, place, events }) => {
-        const marker = L.circleMarker(coordinates, {
-            radius: 8, fillColor: COLOR_EVENT, color: '#fff',
-            weight: 2, opacity: 1, fillOpacity: 0.8
-        });
+        const count  = events.length;
+        const marker = createCountMarker(coordinates, count, COLOR_EVENT);
+        marker.bindTooltip(
+            `${activeFilters.agency} — ${place.country}: ${count} evento(s)`,
+            { permanent: false, direction: 'top', className: 'fela-tooltip' }
+        );
         marker.bindPopup(createEventsGroupPopup(place, events), { maxWidth: 420, maxHeight: 400 });
         marker.on('popupopen', () => injectPopupEditButtons(marker));
         eventMarkers.addLayer(marker);
@@ -490,14 +520,27 @@ function injectPopupEditButtons(marker) {
         const actionsDiv = itemEl.querySelector('.popup-actions');
         if (!actionsDiv || actionsDiv.children.length > 0) return;
 
-        const eventId   = Number(itemEl.dataset.eventId);
-        const createdBy = itemEl.dataset.createdBy;
-        const isLegacy  = !createdBy || createdBy === 'null';
-        const isOwner   = !isLegacy && createdBy === user.username;
-        const canModify = isOwner || user.is_superuser;
+        const eventId    = Number(itemEl.dataset.eventId);
+        const createdBy  = itemEl.dataset.createdBy;
+        const eventTitle = itemEl.querySelector('h4')?.textContent || String(eventId);
+        const isLegacy   = !createdBy || createdBy === 'null';
+        const isOwner    = !isLegacy && createdBy === user.username;
+        const canModify  = isOwner || user.is_superuser;
+
+        // Add — any approved user can add presentations to any event
+        const addBtn = document.createElement('button');
+        addBtn.className   = 'popup-add-btn';
+        addBtn.textContent = '➕ Añadir';
+        addBtn.title       = 'Añadir presentación a este evento';
+        addBtn.addEventListener('click', () => {
+            marker.closePopup();
+            loadAddPresentationForEvent(eventId, eventTitle);
+        });
+        actionsDiv.appendChild(addBtn);
 
         if (!canModify) return;
 
+        // Edit and Delete — only for the record owner or superuser
         const editBtn = document.createElement('button');
         editBtn.className   = 'popup-edit-btn';
         editBtn.textContent = '✏️ Editar';
@@ -510,7 +553,6 @@ function injectPopupEditButtons(marker) {
         const deleteBtn = document.createElement('button');
         deleteBtn.className   = 'popup-delete-btn';
         deleteBtn.textContent = '🗑️ Eliminar';
-        const eventTitle = itemEl.querySelector('h4')?.textContent || String(eventId);
         deleteBtn.addEventListener('click', () => deleteEventFromPopup(eventId, eventTitle));
         actionsDiv.appendChild(deleteBtn);
     });
@@ -544,6 +586,23 @@ async function loadEventForEdit(eventId) {
     }, allLanguages);
 }
 
+function loadAddPresentationForEvent(eventId, eventTitle) {
+    const editorPanel   = document.getElementById('editor-panel');
+    const editorContent = document.getElementById('editor-content');
+    if (!editorPanel || !editorContent) return;
+
+    editorPanel.style.display = 'block';
+    const contentEl = document.getElementById('editor-content');
+    if (contentEl && getComputedStyle(contentEl).display === 'none') {
+        contentEl.style.display = 'block';
+        const btn = document.getElementById('toggle-editor');
+        if (btn) btn.textContent = '▼ Minimizar';
+    }
+
+    // Pre-fill the event so the user skips the search step
+    initAddPresentationForm(editorContent, { id: eventId, title: eventTitle });
+}
+
 async function deleteEventFromPopup(eventId, eventTitle) {
     if (!confirm(`¿Eliminar el evento "${eventTitle}"?\n\nSe eliminarán también todas sus presentaciones.`)) return;
     const result = await EventsAPI.delete(eventId);
@@ -555,11 +614,18 @@ async function deleteEventFromPopup(eventId, eventTitle) {
 }
 
 function createSpeakerPopupContent(country, speakersMap) {
-    let html = `<div class="popup-speaker-cluster">
-        <h3>🌍 ${escapeHtml(country)}</h3>`;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'popup-speaker-cluster';
+
+    const heading = document.createElement('h3');
+    heading.textContent = `🌍 ${country}`;
+    wrapper.appendChild(heading);
 
     speakersMap.forEach(speakerData => {
-        html += `<div class="popup-speaker-item">
+        const itemEl = document.createElement('div');
+        itemEl.className = 'popup-speaker-item';
+
+        let inner = `
             <div class="speaker-header">
                 👤 <strong>${escapeHtml(speakerData.name || '')}</strong>
             </div>
@@ -569,22 +635,23 @@ function createSpeakerPopupContent(country, speakersMap) {
             </div>`;
 
         if (speakerData.presentations?.length) {
-            html += `<div class="speaker-presentations">`;
+            inner += `<div class="speaker-presentations">`;
             speakerData.presentations.forEach(pres => {
-                html += `<div class="speaker-pres-item">
+                inner += `<div class="speaker-pres-item">
                     📋 <em>${escapeHtml(pres.presTitle)}</em>
                     <span class="pres-event">
                         @ ${escapeHtml(pres.eventTitle)} (${escapeHtml(String(pres.year))})
                     </span>
                 </div>`;
             });
-            html += `</div>`;
+            inner += `</div>`;
         }
-        html += `</div>`;
+
+        itemEl.innerHTML = inner;
+        wrapper.appendChild(itemEl);
     });
 
-    html += `</div>`;
-    return html;
+    return wrapper;
 }
 
 // ---------------------------------------------------------------------------

@@ -17,6 +17,7 @@
     <link rel="stylesheet" type="text/css" href="./css/admin.css">
     <link rel="stylesheet" type="text/css" href="./css/editor.css">
     <link rel="stylesheet" type="text/css" href="./css/help.css">
+    <link rel="stylesheet" type="text/css" href="./css/stats.css">
 
 
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -32,6 +33,7 @@
         <button class="menu-item active" data-section="home">Inicio</button>
         <button class="menu-item" data-section="map">Mapa</button>
         <button class="menu-item" data-section="help">Ayuda</button>
+        <button class="menu-item" data-section="stats">Estadísticas</button>
         <button class="menu-item" data-section="about">Acerca de</button>
         <button class="menu-item" id="superuser-menu-item" data-section="superuser" style="display: none;">
             Administrador
@@ -51,6 +53,16 @@
 
         <!-- Map Container -->
         <div id="map-container" class="section visible">
+            <!-- KPI bar — populated by updateKPIBar() in app.js -->
+            <div id="kpi-bar">
+                <div class="kpi-bar-item">🌍 <strong id="kpi-events">—</strong> eventos</div>
+                <span class="kpi-bar-sep">|</span>
+                <div class="kpi-bar-item">📋 <strong id="kpi-presentations">—</strong> presentaciones</div>
+                <span class="kpi-bar-sep">|</span>
+                <div class="kpi-bar-item">👥 <strong id="kpi-speakers">—</strong> ponentes</div>
+                <span class="kpi-bar-sep">|</span>
+                <div class="kpi-bar-item">🗺️ <strong id="kpi-countries">—</strong> países</div>
+            </div>
             <div id="map">
                 <div class="controls-container"></div>
 
@@ -155,86 +167,344 @@
             </div>
             <h1>Ayuda y Documentación</h1>
 
-            <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                <h2 style="color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin-bottom: 20px;">📊 Información de las Vistas del Mapa</h2>
-                <h3 style="color: #667eea; margin-top: 25px;">🌍 Vista por Eventos</h3>
-                <p>Dos opciones: por país (agrupa eventos por país) y por ciudad (ubica eventos en su ciudad).</p>
-                <h3 style="color: #667eea; margin-top: 25px;">👥 Vista por Ponentes</h3>
-                <p>Identifica en el mapa los países de origen de los ponentes.</p>
-                <h3 style="color: #667eea; margin-top: 25px;">🗣️ Vista por Idiomas</h3>
-                <p>Eventos organizados según el idioma de las ponencias.</p>
-                <h3 style="color: #667eea; margin-top: 25px;">🏛️ Vista por Organismos</h3>
-                <p>Eventos agrupados por organismo organizador.</p>
-                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-top: 20px; border-radius: 4px;">
+            <!-- ── 1. Introducción ─────────────────────────────────────── -->
+            <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <h2 style="color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin-bottom: 20px;">🌐 ¿Qué es esta plataforma?</h2>
+                <p>Esta aplicación es un visor interactivo de la actividad académica y profesional vinculada al Marco para la Administración Efectiva del Territorio (FELA). Permite consultar, visualizar geográficamente y gestionar eventos, presentaciones y ponentes registrados en todo el mundo.</p>
+                <p>Cualquier visitante puede explorar el mapa y consultar las estadísticas sin necesidad de crear una cuenta. Los usuarios registrados y aprobados pueden además añadir, editar y eliminar registros.</p>
+            </div>
+
+            <!-- ── 2. Estructura de la interfaz ───────────────────────── -->
+            <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <h2 style="color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin-bottom: 20px;">🗂️ Estructura de la interfaz</h2>
+                <p>La barra superior contiene el menú principal de navegación. Cada sección se activa pulsando su botón:</p>
+                <table style="width:100%; border-collapse:collapse; font-size:14px; margin-top:12px;">
+                    <thead>
+                        <tr style="background:#f0f2ff;">
+                            <th style="padding:10px 14px; text-align:left; border-bottom:2px solid #667eea; color:#667eea;">Sección</th>
+                            <th style="padding:10px 14px; text-align:left; border-bottom:2px solid #667eea; color:#667eea;">Descripción</th>
+                            <th style="padding:10px 14px; text-align:left; border-bottom:2px solid #667eea; color:#667eea;">Acceso</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:10px 14px; font-weight:600;">🏠 Inicio</td>
+                            <td style="padding:10px 14px;">Presentación general del proyecto FELA, sus objetivos y documentación oficial.</td>
+                            <td style="padding:10px 14px;">Todos</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #eee; background:#fafafa;">
+                            <td style="padding:10px 14px; font-weight:600;">🗺️ Mapa</td>
+                            <td style="padding:10px 14px;">Mapa interactivo con marcadores, filtros y ventanas emergentes de información.</td>
+                            <td style="padding:10px 14px;">Todos</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:10px 14px; font-weight:600;">📊 Estadísticas</td>
+                            <td style="padding:10px 14px;">Indicadores clave y gráficos de resumen. Incluye opción de descarga de datos.</td>
+                            <td style="padding:10px 14px;">Todos</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #eee; background:#fafafa;">
+                            <td style="padding:10px 14px; font-weight:600;">❓ Ayuda</td>
+                            <td style="padding:10px 14px;">Esta página de documentación y guías de uso.</td>
+                            <td style="padding:10px 14px;">Todos</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:10px 14px; font-weight:600;">ℹ️ Acerca de</td>
+                            <td style="padding:10px 14px;">Información sobre el equipo y las instituciones responsables del proyecto.</td>
+                            <td style="padding:10px 14px;">Todos</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #eee; background:#fafafa;">
+                            <td style="padding:10px 14px; font-weight:600;">🔑 Administrador</td>
+                            <td style="padding:10px 14px;">Panel de gestión de usuarios pendientes de aprobación.</td>
+                            <td style="padding:10px 14px;">Solo superusuarios</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:10px 14px; font-weight:600;">👤 Sesión</td>
+                            <td style="padding:10px 14px;">Botón en el extremo derecho para iniciar o cerrar sesión.</td>
+                            <td style="padding:10px 14px;">Todos</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ── 3. El Mapa ─────────────────────────────────────────── -->
+            <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <h2 style="color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin-bottom: 20px;">🗺️ El Mapa interactivo</h2>
+
+                <h3 style="color: #667eea; margin-top: 20px;">Barra de indicadores (KPI)</h3>
+                <p>En la parte superior del mapa hay una franja oscura con cuatro cifras globales: total de eventos, presentaciones, ponentes y países registrados. Se actualiza automáticamente cada vez que se cargan los datos.</p>
+
+                <h3 style="color: #667eea; margin-top: 24px;">Controles de vista</h3>
+                <p>En la esquina superior derecha del mapa hay cuatro botones que cambian la forma en que se visualizan los datos:</p>
+                <ul style="margin-top: 8px;">
+                    <li style="margin-bottom: 10px;"><strong>🌍 Eventos</strong> — Despliega dos opciones:
+                        <ul style="margin-top:6px;">
+                            <li><em>Ver por país</em>: agrupa todos los eventos de un mismo país en un único marcador circular con el número total.</li>
+                            <li><em>Ver por ciudad</em>: ubica los eventos en la ciudad exacta donde ocurrieron.</li>
+                        </ul>
+                    </li>
+                    <li style="margin-bottom: 10px;"><strong>👥 Autores/Ponentes</strong> — Muestra en el mapa los países de origen de todos los ponentes registrados, agrupados por país.</li>
+                    <li style="margin-bottom: 10px;"><strong>🗣️ Idiomas</strong> — Despliega la lista de idiomas disponibles. Al seleccionar uno, el mapa muestra cuántas presentaciones en ese idioma existen por país.</li>
+                    <li style="margin-bottom: 10px;"><strong>🏛️ Organismos</strong> — Despliega la lista de organismos registrados. Al seleccionar uno, el mapa muestra los países donde ese organismo tiene eventos.</li>
+                </ul>
+
+                <h3 style="color: #667eea; margin-top: 24px;">Marcadores numéricos</h3>
+                <p>Cada punto en el mapa es un círculo de color con un número en su interior que indica la cantidad de elementos en esa ubicación. El tamaño del círculo crece logarítmicamente con el número. Al pasar el cursor por encima aparece un tooltip con el nombre del lugar y el recuento exacto.</p>
+
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 14px; margin-top: 20px; border-radius: 4px;">
                     <strong style="color: #856404;">📌 Nota:</strong>
-                    <p style="margin: 5px 0 0 0; color: #856404;">El punto en el Atlántico corresponde a eventos en modalidad en línea.</p>
+                    <span style="color: #856404;"> El marcador ubicado en el Atlántico central corresponde a eventos realizados en modalidad en línea (online).</span>
                 </div>
             </div>
 
+            <!-- ── 4–8. Acordeón detallado ────────────────────────────── -->
             <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                <h2 style="color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin-bottom: 20px;">📚 Manual de Usuario para Editores</h2>
+                <h2 style="color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin-bottom: 20px;">📚 Guía detallada</h2>
 
                 <!-- Accordion — toggled via addEventListener in setupMenuListeners() -->
                 <div class="help-accordion">
 
+                    <!-- 4. Ventanas emergentes -->
                     <div class="help-accordion-item">
                         <div class="help-accordion-header">
-                            <span class="help-accordion-title">🆕 Crear Evento Completo</span>
+                            <span class="help-accordion-title">🪟 Ventanas emergentes del mapa (popups)</span>
                             <span class="help-accordion-icon">▼</span>
                         </div>
                         <div class="help-accordion-content">
                             <div class="help-accordion-body">
-                                <p><strong>Usa esta opción cuando:</strong> Necesites crear un evento nuevo desde cero.</p>
+                                <p>Al pulsar sobre cualquier marcador del mapa se abre una ventana emergente con información detallada.</p>
+
+                                <p><strong>Popups de eventos</strong> (vistas Eventos, Idiomas y Organismos):</p>
                                 <ul>
-                                    <li><strong>País y Ciudad *</strong>: Escribe para buscar. Coordenadas automáticas.</li>
-                                    <li><strong>Año *</strong>, <strong>Título *</strong>: Obligatorios.</li>
-                                    <li><strong>Organismos</strong>: Agrega con Enter.</li>
+                                    <li>Una cabecera azul con el título del evento, año, fecha, tipo y organismos organizadores.</li>
+                                    <li>Un indicador del número de presentaciones que contiene el evento.</li>
+                                    <li>Una tarjeta por cada presentación con su título, ponentes (nombre, país, organismo), idioma y enlace al documento si está disponible.</li>
+                                    <li>Botones de acción en la parte inferior (visibles solo para usuarios con permisos — ver sección de Permisos).</li>
                                 </ul>
-                                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; border-radius: 4px;">
-                                    <strong style="color: #856404;">⚠️ IMPORTANTE:</strong> Al crear un evento nuevo completo, solo se puede añadir una presentación. Para más, usa <em>Agregar Presentación a Evento Existente</em>.
+
+                                <p style="margin-top:12px;"><strong>Popups de ponentes</strong> (vista Autores/Ponentes):</p>
+                                <ul>
+                                    <li>Lista de todos los ponentes del país, con sus presentaciones y los eventos a los que pertenecen.</li>
+                                </ul>
+
+                                <p style="margin-top:12px;"><strong>Navegación en el popup:</strong> puedes desplazarte (scroll) dentro de la ventana si el contenido es extenso. Para cerrarla pulsa la X en la esquina superior derecha o haz clic fuera de ella.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Crear registros -->
+                    <div class="help-accordion-item">
+                        <div class="help-accordion-header">
+                            <span class="help-accordion-title">✏️ Crear nueva información</span>
+                            <span class="help-accordion-icon">▼</span>
+                        </div>
+                        <div class="help-accordion-content">
+                            <div class="help-accordion-body">
+                                <p>Los usuarios aprobados ven un <strong>panel editor</strong> en la parte inferior del mapa. Contiene tres opciones:</p>
+
+                                <p style="margin-top:14px;"><strong>📅 Crear Evento Completo</strong></p>
+                                <p>Crea un evento nuevo desde cero con su primera presentación y ponente.</p>
+                                <ol>
+                                    <li>Escribe el <strong>título</strong> y selecciona el <strong>año</strong>.</li>
+                                    <li>Busca el <strong>país</strong> y la <strong>ciudad</strong> usando el autocompletado — las coordenadas se asignan automáticamente.</li>
+                                    <li>Opcionalmente añade <strong>fecha exacta</strong>, <strong>tipo de evento</strong> y <strong>organismos</strong> (pulsa Enter para añadir cada uno).</li>
+                                    <li>Completa los datos de la <strong>presentación</strong>: título, idioma, URL del documento y observaciones.</li>
+                                    <li>Añade el <strong>ponente</strong>: nombre, país y organismo.</li>
+                                    <li>Pulsa <strong>Guardar Evento</strong>.</li>
+                                </ol>
+                                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; border-radius: 4px; margin-top: 10px;">
+                                    <strong style="color: #856404;">⚠️ Límite:</strong> Al crear un evento se puede añadir solo una presentación. Para añadir más, usa la opción siguiente una vez guardado el evento.
+                                </div>
+
+                                <p style="margin-top:18px;"><strong>📋 Agregar Presentación a Evento Existente</strong></p>
+                                <p>Añade una presentación nueva a un evento que ya existe en el sistema.</p>
+                                <ol>
+                                    <li>Busca el evento por nombre usando el campo de búsqueda.</li>
+                                    <li>Completa el título, idioma, URL y observaciones de la nueva presentación.</li>
+                                    <li>Añade el ponente principal.</li>
+                                    <li>Pulsa <strong>Guardar Presentación</strong>.</li>
+                                </ol>
+                                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; border-radius: 4px; margin-top: 10px;">
+                                    <strong style="color: #856404;">💡 Nota:</strong> El título de la presentación no puede repetirse dentro del mismo evento.
+                                </div>
+
+                                <p style="margin-top:18px;"><strong>👤 Agregar Ponente a Presentación Existente</strong></p>
+                                <p>Vincula un ponente adicional a una presentación que ya existe.</p>
+                                <ol>
+                                    <li>Busca la presentación por nombre.</li>
+                                    <li>Introduce los datos del nuevo ponente.</li>
+                                    <li>Pulsa <strong>Guardar</strong>.</li>
+                                </ol>
+                                <p>El sistema detecta automáticamente si el ponente ya está registrado y lo reutiliza.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. Editar y eliminar -->
+                    <div class="help-accordion-item">
+                        <div class="help-accordion-header">
+                            <span class="help-accordion-title">🔧 Editar y eliminar registros</span>
+                            <span class="help-accordion-icon">▼</span>
+                        </div>
+                        <div class="help-accordion-content">
+                            <div class="help-accordion-body">
+                                <p>La edición y eliminación se realizan directamente desde los <strong>popups del mapa</strong>. Al abrir el popup de un evento, si tienes permisos verás botones de acción al final de cada evento:</p>
+
+                                <ul>
+                                    <li><strong>➕ Añadir</strong> — disponible para cualquier usuario aprobado. Abre el formulario de nueva presentación con el evento preseleccionado.</li>
+                                    <li><strong>✏️ Editar</strong> — disponible solo para el creador del registro o un superusuario. Carga el formulario de edición en el panel inferior.</li>
+                                    <li><strong>🗑️ Eliminar</strong> — disponible solo para el creador del registro o un superusuario. Solicita confirmación antes de borrar.</li>
+                                </ul>
+
+                                <p style="margin-top:14px;"><strong>Editar un evento</strong> permite modificar:</p>
+                                <ul>
+                                    <li>Título, año, fecha, tipo</li>
+                                    <li>País y ciudad (con búsqueda por autocompletado)</li>
+                                    <li>Organismos vinculados</li>
+                                    <li>Lista de presentaciones (editar o eliminar cada una individualmente)</li>
+                                </ul>
+
+                                <p style="margin-top:14px;"><strong>Editar una presentación</strong> (desde el formulario de edición del evento) permite modificar:</p>
+                                <ul>
+                                    <li>Título, idioma, URL del documento, observaciones</li>
+                                    <li>Lista de ponentes: añadir nuevos o eliminar existentes</li>
+                                </ul>
+
+                                <div style="background: #fdecea; border-left: 4px solid #e53935; padding: 12px; border-radius: 4px; margin-top: 14px;">
+                                    <strong style="color: #c62828;">🗑️ Eliminar un evento</strong> borra también todas sus presentaciones y los vínculos con los ponentes. Esta acción no se puede deshacer.
+                                </div>
+
+                                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; border-radius: 4px; margin-top: 10px;">
+                                    <strong style="color: #856404;">⚠️ Al añadir un ponente en el formulario de edición:</strong> asegúrate de pulsar el botón <strong>➕</strong> antes de guardar la presentación. Si guardas sin pulsar ➕, el ponente no quedará vinculado.
                                 </div>
                             </div>
                         </div>
                     </div>
 
+                    <!-- 7. Estadísticas -->
                     <div class="help-accordion-item">
                         <div class="help-accordion-header">
-                            <span class="help-accordion-title">➕ Agregar Presentación a Evento Existente</span>
+                            <span class="help-accordion-title">📊 Sección de Estadísticas</span>
                             <span class="help-accordion-icon">▼</span>
                         </div>
                         <div class="help-accordion-content">
                             <div class="help-accordion-body">
-                                <p>Busca el evento existente y añade una nueva presentación con sus ponentes.</p>
-                                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; border-radius: 4px;">
-                                    <strong style="color: #856404;">💡 Importante:</strong> El título no puede repetirse dentro del mismo evento.
-                                </div>
+                                <p>La sección <strong>Estadísticas</strong> (accesible desde el menú superior) ofrece un resumen cuantitativo de todos los datos registrados en la plataforma.</p>
+
+                                <p style="margin-top:12px;"><strong>Indicadores globales (tarjetas KPI):</strong></p>
+                                <ul>
+                                    <li>🌍 Total de eventos registrados</li>
+                                    <li>📋 Total de presentaciones</li>
+                                    <li>👥 Total de ponentes/autores únicos</li>
+                                    <li>🗺️ Total de países con actividad</li>
+                                    <li>🗣️ Número de idiomas distintos</li>
+                                    <li>🏛️ Número de organismos distintos</li>
+                                </ul>
+
+                                <p style="margin-top:14px;"><strong>Gráficos disponibles:</strong></p>
+                                <ul>
+                                    <li><em>Eventos por año</em> — evolución temporal de la actividad.</li>
+                                    <li><em>Top países por eventos</em> — los 10 países con más eventos.</li>
+                                    <li><em>Presentaciones por idioma</em> — distribución de idiomas (gráfico circular).</li>
+                                    <li><em>Top países por ponentes</em> — los 10 países con más ponentes distintos.</li>
+                                    <li><em>Top organismos</em> — los 10 organismos con mayor número de eventos.</li>
+                                    <li><em>Top 10 ponentes</em> — los ponentes con mayor número de presentaciones.</li>
+                                </ul>
+
+                                <p style="margin-top:12px;">Los gráficos se generan automáticamente con los datos actuales cada vez que se accede a la sección.</p>
                             </div>
                         </div>
                     </div>
 
+                    <!-- 8. Descarga de datos -->
                     <div class="help-accordion-item">
                         <div class="help-accordion-header">
-                            <span class="help-accordion-title">👤 Agregar Ponente a Presentación Existente</span>
+                            <span class="help-accordion-title">⬇️ Descarga de datos</span>
                             <span class="help-accordion-icon">▼</span>
                         </div>
                         <div class="help-accordion-content">
                             <div class="help-accordion-body">
-                                <p>Busca la presentación existente y añade un ponente adicional. El sistema detecta ponentes ya registrados.</p>
+                                <p>En la parte superior de la sección <strong>Estadísticas</strong> hay un botón <strong>⬇ Descargar GeoJSON</strong> que permite exportar todos los datos de la plataforma para uso externo.</p>
+
+                                <p style="margin-top:12px;"><strong>¿Qué contiene el archivo?</strong></p>
+                                <ul>
+                                    <li>Todos los eventos con sus metadatos (título, año, fecha, tipo, país, ciudad, organismos).</li>
+                                    <li>Todas las presentaciones vinculadas (título, idioma, URL, observaciones).</li>
+                                    <li>Todos los ponentes (nombre, país, organismo).</li>
+                                    <li>Datos geográficos de países y ciudades usados en el mapa.</li>
+                                </ul>
+
+                                <p style="margin-top:12px;"><strong>¿Qué no contiene?</strong></p>
+                                <ul>
+                                    <li>Información sobre quién creó o modificó cada registro.</li>
+                                    <li>Identificadores internos del sistema.</li>
+                                    <li>Fechas de generación u otros metadatos internos.</li>
+                                </ul>
+
+                                <p style="margin-top:12px;">El archivo se descarga en formato <strong>GeoJSON</strong> estándar, compatible con QGIS, ArcGIS, Python (GeoPandas), R y otras herramientas de análisis geoespacial. El nombre del archivo incluye la fecha de descarga.</p>
                             </div>
                         </div>
                     </div>
 
+                    <!-- 9. Permisos y roles -->
                     <div class="help-accordion-item">
                         <div class="help-accordion-header">
-                            <span class="help-accordion-title">💡 Tips y Buenas Prácticas</span>
+                            <span class="help-accordion-title">🔐 Permisos y roles de usuario</span>
+                            <span class="help-accordion-icon">▼</span>
+                        </div>
+                        <div class="help-accordion-content">
+                            <div class="help-accordion-body">
+                                <p>La plataforma tiene tres niveles de acceso:</p>
+
+                                <p style="margin-top:12px;"><strong>Visitante (sin cuenta)</strong></p>
+                                <ul>
+                                    <li>Navegar por todas las secciones informativas.</li>
+                                    <li>Explorar el mapa completo en todas sus vistas y filtros.</li>
+                                    <li>Consultar los popups con información detallada.</li>
+                                    <li>Ver la sección de Estadísticas y descargar los datos.</li>
+                                </ul>
+
+                                <p style="margin-top:14px;"><strong>Usuario aprobado (con cuenta activa)</strong></p>
+                                <p>Todo lo anterior, más:</p>
+                                <ul>
+                                    <li>Crear nuevos eventos, presentaciones y ponentes.</li>
+                                    <li>Añadir presentaciones a cualquier evento existente.</li>
+                                    <li>Editar y eliminar los registros que creó.</li>
+                                </ul>
+
+                                <p style="margin-top:14px;"><strong>Superusuario (administrador)</strong></p>
+                                <p>Todo lo anterior, más:</p>
+                                <ul>
+                                    <li>Editar y eliminar cualquier registro, independientemente de quién lo creó.</li>
+                                    <li>Acceder al panel <em>Administrador</em> para aprobar o gestionar cuentas de otros usuarios.</li>
+                                </ul>
+
+                                <p style="margin-top:14px;"><strong>Proceso de registro:</strong></p>
+                                <ol>
+                                    <li>Pulsa <em>Iniciar sesión</em> en la barra superior.</li>
+                                    <li>En la página de acceso, selecciona <em>Crear cuenta</em>.</li>
+                                    <li>Completa el formulario con tus datos.</li>
+                                    <li>Tu cuenta quedará pendiente de aprobación por un administrador. Una vez aprobada recibirás acceso completo al editor.</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 10. Tips -->
+                    <div class="help-accordion-item">
+                        <div class="help-accordion-header">
+                            <span class="help-accordion-title">💡 Consejos y buenas prácticas</span>
                             <span class="help-accordion-icon">▼</span>
                         </div>
                         <div class="help-accordion-content">
                             <div class="help-accordion-body">
                                 <ol>
-                                    <li>Busca antes de crear para evitar duplicados.</li>
-                                    <li>Usa siempre el autocompletado para países, ponentes y organismos.</li>
-                                    <li>Los datos no se guardan hasta pulsar el botón Guardar.</li>
+                                    <li style="margin-bottom:8px;"><strong>Busca antes de crear.</strong> Usa el mapa o el buscador del formulario para verificar que el evento o ponente no existe ya en el sistema y evitar duplicados.</li>
+                                    <li style="margin-bottom:8px;"><strong>Usa el autocompletado.</strong> Los campos de país, ciudad, ponente y organismo ofrecen sugerencias automáticas. Seleccionar una sugerencia garantiza que los datos quedan correctamente vinculados y geocodificados.</li>
+                                    <li style="margin-bottom:8px;"><strong>No olvides el botón ➕ al añadir ponentes.</strong> Al editar una presentación debes pulsar ➕ para confirmar cada ponente antes de guardar; de lo contrario el ponente no se vinculará.</li>
+                                    <li style="margin-bottom:8px;"><strong>Los cambios no se guardan solos.</strong> Toda creación o edición requiere pulsar el botón <em>Guardar</em> correspondiente al final del formulario.</li>
+                                    <li style="margin-bottom:8px;"><strong>La eliminación es permanente.</strong> Eliminar un evento borra también todas sus presentaciones. Confirma siempre antes de proceder.</li>
+                                    <li style="margin-bottom:8px;"><strong>El mapa se actualiza automáticamente</strong> tras guardar o eliminar un registro, por lo que los cambios se reflejan de inmediato.</li>
+                                    <li><strong>La descarga de datos</strong> siempre refleja el estado actual de la plataforma en el momento en que se pulsa el botón.</li>
                                 </ol>
                             </div>
                         </div>
@@ -276,6 +546,11 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Statistics Container -->
+        <div id="stats-container" class="section">
+            <!-- Populated dynamically by renderStats() in stats.js -->
         </div>
 
     </div><!-- end #main-area -->

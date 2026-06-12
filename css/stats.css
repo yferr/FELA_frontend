@@ -1,0 +1,240 @@
+/* ============================================================
+   stats.css — Statistics page layout
+   ============================================================ */
+
+/* ----------------------------------------------------------
+   KPI bar — compact strip above the map
+   ---------------------------------------------------------- */
+
+#kpi-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(33, 33, 33, 0.82);
+    color: #fff;
+    padding: 6px 14px;
+    font-size: 12px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    position: relative;
+    z-index: 10;
+}
+
+.kpi-bar-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.kpi-bar-item strong {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.kpi-bar-sep {
+    opacity: 0.35;
+    user-select: none;
+}
+
+/* ----------------------------------------------------------
+   Statistics page container
+   ---------------------------------------------------------- */
+
+#stats-container {
+    overflow-y: auto;
+    height: 100%;
+    background: #f4f6fa;
+}
+
+.stats-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 30px 20px 60px;
+}
+
+.stats-header {
+    margin-bottom: 20px;
+}
+
+/* ----------------------------------------------------------
+   Download card
+   ---------------------------------------------------------- */
+
+.stats-download-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: #fff;
+    border: 1px solid #BBDEFB;
+    border-left: 4px solid #1565C0;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+    box-shadow: 0 2px 8px rgba(21,101,192,0.07);
+}
+
+.stats-download-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.stats-download-icon {
+    font-size: 28px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.stats-download-info strong {
+    display: block;
+    font-size: 15px;
+    color: #1a237e;
+    margin-bottom: 4px;
+}
+
+.stats-download-info p {
+    margin: 0;
+    font-size: 13px;
+    color: #546e7a;
+    line-height: 1.4;
+}
+
+.stats-download-btn {
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #1565C0, #1976D2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.stats-download-btn:hover {
+    opacity: 0.88;
+    transform: translateY(-1px);
+}
+
+.stats-download-btn:active {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.stats-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a237e;
+    margin: 0 0 6px;
+}
+
+.stats-header p {
+    color: #546e7a;
+    margin: 0;
+    font-size: 14px;
+}
+
+/* ----------------------------------------------------------
+   KPI cards grid
+   ---------------------------------------------------------- */
+
+.stats-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.stats-kpi-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 16px;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stats-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.stats-kpi-icon {
+    font-size: 26px;
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.stats-kpi-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1565C0;
+    line-height: 1.1;
+}
+
+.stats-kpi-label {
+    font-size: 12px;
+    color: #607D8B;
+    margin-top: 4px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+/* ----------------------------------------------------------
+   Charts grid
+   ---------------------------------------------------------- */
+
+.stats-charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.stats-chart-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+}
+
+.stats-chart-wide {
+    grid-column: 1 / -1;
+}
+
+.stats-chart-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #37474f;
+    margin: 0 0 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.stats-chart-card canvas {
+    max-height: 280px;
+}
+
+.stats-chart-wide canvas {
+    max-height: 220px;
+}
+
+/* ----------------------------------------------------------
+   Responsive
+   ---------------------------------------------------------- */
+
+@media (max-width: 700px) {
+    .stats-charts-grid {
+        grid-template-columns: 1fr;
+    }
+    .stats-chart-wide {
+        grid-column: 1;
+    }
+    .stats-kpi-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}

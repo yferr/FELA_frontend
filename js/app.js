@@ -46,11 +46,11 @@ import { canEdit, initAuthButton,
 import { initEventForm,
          initAddPresentationForm,
          initAddSpeakerForm,
-         initEditEventForm,
-         initEditPresentationForm }         from './forms.js';
+         initEditEventForm }               from './forms.js';
 import { EventsAPI }                        from './api.js';
 import { handleRefreshPendingUsers,
          loadPendingUsers }                 from './admin.js';
+import { renderStats, updateKPIBar }       from './stats.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -94,6 +94,7 @@ function initMap(containerId = 'map') {
     map = L.map(containerId, {
         center:        DEFAULT_CENTER,
         zoom:          DEFAULT_ZOOM,
+        minZoom:       2.5,
         worldCopyJump: true
     });
 
@@ -102,12 +103,6 @@ function initMap(containerId = 'map') {
     eventMarkers   = L.layerGroup().addTo(map);
     speakerMarkers = L.layerGroup().addTo(map);
     cityMarkers    = L.layerGroup().addTo(map);
-
-    L.control.layers(null, {
-        'Eventos':  eventMarkers,
-        'Ponentes': speakerMarkers,
-        'Ciudades': cityMarkers
-    }, { collapsed: false }).addTo(map);
 
     loadGeoJsonData();
 }
@@ -125,6 +120,7 @@ async function loadGeoJsonData() {
         allLanguages = extractAllLanguages(geoJsonData);
         populateLanguagesDropdown(geoJsonData);
         populateAgenciesDropdown(geoJsonData);
+        updateKPIBar(geoJsonData);
         renderMap();
     } catch (error) {
         console.error('[FELA] Error cargando GeoJSON:', error);
@@ -464,15 +460,20 @@ function createEventsGroupPopup(place, events) {
         if (eventData.id)           itemEl.dataset.eventId   = eventData.id;
         if (eventData.created_by !== undefined) itemEl.dataset.createdBy = String(eventData.created_by);
 
-        const agencies = (eventData.agency || []).join(', ');
+        const agencies  = (eventData.agency || []).join(', ');
+        const presCount = Object.keys(eventData.titles || {}).length;
+
         let inner = `
-            <h4>${escapeHtml(eventTitle)}</h4>
-            <div class="popup-meta">
-                📅 ${escapeHtml(String(year))}
-                ${eventData.date ? ` · ${escapeHtml(eventData.date)}` : ''}
-                ${eventData.type ? ` · ${escapeHtml(eventData.type)}` : ''}
+            <div class="popup-event-header">
+                <h4>${escapeHtml(eventTitle)}</h4>
+                <div class="popup-meta">
+                    📅 ${escapeHtml(String(year))}
+                    ${eventData.date ? ` · ${escapeHtml(eventData.date)}` : ''}
+                    ${eventData.type ? ` · ${escapeHtml(eventData.type)}` : ''}
+                </div>
+                ${agencies ? `<div class="popup-agencies">🏢 ${escapeHtml(agencies)}</div>` : ''}
             </div>
-            ${agencies ? `<div class="popup-agencies">🏢 ${escapeHtml(agencies)}</div>` : ''}`;
+            <div class="popup-presentations-count">📋 Presentaciones (${presCount})</div>`;
 
         Object.entries(eventData.titles || {}).forEach(([presTitle, presList]) => {
             inner += `<div class="popup-presentation"><strong>📋 ${escapeHtml(presTitle)}</strong>`;
@@ -760,6 +761,7 @@ function setupMenuListeners() {
         map:       document.getElementById('map-container'),
         help:      document.getElementById('help-container'),
         about:     document.getElementById('about-container'),
+        stats:     document.getElementById('stats-container'),
         superuser: document.getElementById('superuser-container')
     };
 
@@ -773,6 +775,7 @@ function setupMenuListeners() {
                 el.classList.toggle('visible', key === btn.dataset.section);
             });
             if (btn.dataset.section === 'superuser') loadPendingUsers();
+            if (btn.dataset.section === 'stats')     renderStats(sections.stats, geoJsonData);
         });
     });
 

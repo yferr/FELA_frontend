@@ -565,9 +565,8 @@ async function loadEventForEdit(eventId) {
     if (!editorPanel || !editorContent) return;
 
     editorPanel.style.display = 'block';
-    const contentEl = document.getElementById('editor-content');
-    if (contentEl && getComputedStyle(contentEl).display === 'none') {
-        contentEl.style.display = 'block';
+    if (getComputedStyle(editorContent).display === 'none') {
+        editorContent.style.display = 'block';
         const btn = document.getElementById('toggle-editor');
         if (btn) btn.textContent = '▼ Minimizar';
     }
@@ -593,9 +592,8 @@ function loadAddPresentationForEvent(eventId, eventTitle) {
     if (!editorPanel || !editorContent) return;
 
     editorPanel.style.display = 'block';
-    const contentEl = document.getElementById('editor-content');
-    if (contentEl && getComputedStyle(contentEl).display === 'none') {
-        contentEl.style.display = 'block';
+    if (getComputedStyle(editorContent).display === 'none') {
+        editorContent.style.display = 'block';
         const btn = document.getElementById('toggle-editor');
         if (btn) btn.textContent = '▼ Minimizar';
     }

@@ -12,7 +12,7 @@ const chartInstances = {};
 // Compute all stats from the raw geoJsonData structure
 // ---------------------------------------------------------------------------
 
-export function computeStats(data) {
+function computeStats(data) {
     const events = data?.events || {};
 
     let totalEvents        = 0;

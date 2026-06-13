@@ -18,10 +18,9 @@ let currentUser = null;
 /**
  * Guardar credenciales en localStorage (si "recordar" está activado)
  */
-function saveCredentials(username, password) {
+function saveCredentials(username) {
     if (localStorage) {
         localStorage.setItem('saved_username', username);
-        // NO guardar contraseña en texto plano
         localStorage.setItem('remember_me', 'true');
     }
 }
@@ -117,7 +116,7 @@ export function initLoginPage() {
  */
 
 
-export async function handleLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
     
     const submitBtn = document.getElementById('login-submit-btn');
@@ -157,7 +156,7 @@ export async function handleLogin(e) {
         if (result.success) {
             // Guardar credenciales si está marcado "recordar"
             if (remember) {
-                saveCredentials(username, password);
+                saveCredentials(username);
             } else {
                 clearSavedCredentials();
             }
@@ -192,7 +191,7 @@ export async function handleLogin(e) {
  * ====================================
  */
 
-export async function handleRegister(e) {
+async function handleRegister(e) {
     e.preventDefault();
     
     const submitBtn = document.getElementById('register-submit-btn');
@@ -308,11 +307,13 @@ export async function initAuthButton() {
                     <div class="alert-inline warning">
                         <p>⚠️ <strong>Tu cuenta está pendiente de aprobación por el administrador.</strong></p>
                         <p>Una vez aprobada, podrás crear y editar eventos.</p>
-                        <button onclick="location.reload()" class="btn btn-outline-secondary">
+                        <button id="pending-reload-btn" class="btn btn-outline-secondary">
                             🔄 Verificar estado
                         </button>
                     </div>
                 `;
+                document.getElementById('pending-reload-btn')
+                    ?.addEventListener('click', () => location.reload());
             }
         }
     } else {
@@ -382,9 +383,3 @@ export function canEdit() {
     return currentUser && currentUser.is_approved;
 }
 
-/**
- * Verificar si el usuario es superusuario
- */
-export function isSuperUser() {
-    return currentUser && currentUser.is_superuser;
-}

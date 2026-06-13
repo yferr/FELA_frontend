@@ -14,40 +14,10 @@
  */
 
 import axios from 'axios';
-import { AuthAPI } from './api.js';
+import { AuthAPI, getCookie, getAxiosConfig } from './api.js';
 import { getApiBaseUrl } from './settings.js';
 
 const API_BASE_URL = getApiBaseUrl();
-
-// ---------------------------------------------------------------------------
-// CSRF helper
-// ---------------------------------------------------------------------------
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
-function getAxiosConfig() {
-    const csrfToken = getCookie('csrftoken');
-    return {
-        withCredentials: true,
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken || ''
-        }
-    };
-}
 
 // ---------------------------------------------------------------------------
 // Load pending users

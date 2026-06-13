@@ -98,7 +98,7 @@ async function ensureCountryDataComplete(speakerData, speakerIndex, formStateRef
             timeout: 5000
         });
         if (!nomResp.data || nomResp.data.length === 0) {
-            return { success: false, error: `No coordinates found for "${countryName}". Select it from the dropdown.` };
+            return { success: false, error: `No se encontraron coordenadas para «${countryName}». Selecciónalo desde el menú desplegable.` };
         }
 
         const coords = { lat: parseFloat(nomResp.data[0].lat), lon: parseFloat(nomResp.data[0].lon) };
@@ -123,7 +123,7 @@ async function ensureCountryDataComplete(speakerData, speakerIndex, formStateRef
         return { success: true, data: countryData };
 
     } catch (error) {
-        return { success: false, error: `Error validating country "${countryName}": ${error.message}` };
+        return { success: false, error: `Error al validar el país «${countryName}»: ${error.message}` };
     }
 }
 
@@ -1878,7 +1878,7 @@ export function initEditEventForm(container, eventData, onSave, availableLanguag
 // Helper for HTML attribute value escaping
 function escapeVal(str) {
     if (!str) return '';
-    return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // ===========================================================================
@@ -1887,7 +1887,7 @@ function escapeVal(str) {
 
 export function initEditPresentationForm(container, presentationData, onBack, onSave, availableLanguages = []) {
     // Track languages locally; speaker add/remove calls API immediately
-    let editLanguages = [...(presentationData.language || [])];
+    let editLanguages = [];
     let speakerACInstance = null;
 
     container.innerHTML = `
@@ -1952,7 +1952,7 @@ export function initEditPresentationForm(container, presentationData, onBack, on
     `;
 
     // Pre-populate language chips
-    editLanguages.forEach(l => addEditLangChip(l));
+    (presentationData.language || []).forEach(l => addEditLangChip(l));
 
     // Render current speakers
     renderEditSpeakerList(presentationData.speakers || []);

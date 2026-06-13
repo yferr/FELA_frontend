@@ -110,6 +110,7 @@ export class Autocomplete {
         this.results = [];
         this.selectedIndex = -1;
         this.isLoading = false;
+        this._docClickHandler = null;
 
         this.init();
     }
@@ -129,9 +130,10 @@ export class Autocomplete {
         this.input.addEventListener('keydown', (e) => this.handleKeydown(e));
         this.input.addEventListener('focus', (e) => this.handleFocus(e));
 
-        document.addEventListener('click', (e) => {
+        this._docClickHandler = (e) => {
             if (!wrapper.contains(e.target)) this.hideResults();
-        });
+        };
+        document.addEventListener('click', this._docClickHandler);
     }
 
     async handleInput(e) {
@@ -380,6 +382,10 @@ export class Autocomplete {
     }
 
     destroy() {
+        if (this._docClickHandler) {
+            document.removeEventListener('click', this._docClickHandler);
+            this._docClickHandler = null;
+        }
         if (this.resultsContainer) this.resultsContainer.remove();
     }
 }

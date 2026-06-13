@@ -118,7 +118,7 @@ async function loadGeoJsonData() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         geoJsonData  = await response.json();
         allLanguages = extractAllLanguages(geoJsonData);
-        populateLanguagesDropdown(geoJsonData);
+        populateLanguagesDropdown(allLanguages);
         populateAgenciesDropdown(geoJsonData);
         updateKPIBar(geoJsonData);
         renderMap();
@@ -679,25 +679,12 @@ function extractAllLanguages(data) {
 // Dropdown populators — items wired with addEventListener, no inline onclick
 // ---------------------------------------------------------------------------
 
-function populateLanguagesDropdown(data) {
+function populateLanguagesDropdown(langs) {
     const ul = document.getElementById('languages-dropdown');
     if (!ul) return;
 
-    const langs = new Set();
-    Object.values(data.events || {}).forEach(yearEvents =>
-        Object.values(yearEvents).forEach(eventList =>
-            eventList.forEach(ev =>
-                Object.values(ev.titles || {}).forEach(presList =>
-                    presList.forEach(p => (p.language || []).forEach(l => {
-                        if (l && l.trim()) langs.add(l.trim());
-                    }))
-                )
-            )
-        )
-    );
-
     ul.innerHTML = '';
-    [...langs].sort().forEach(lang => {
+    langs.forEach(lang => {
         const li = document.createElement('li');
         const a  = document.createElement('a');
         a.className   = 'dropdown-item';

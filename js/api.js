@@ -10,12 +10,12 @@ import {getApiBaseUrl} from './settings.js';
 //const API_BASE_URL = 'http://localhost:8888';
 //const API_BASE_URL = 'https://gisserver.car.upv.es/fela_api';
 
-var API_BASE_URL=getApiBaseUrl();
+const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Obtener token CSRF de las cookies
  */
-function getCookie(name) {
+export function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
         const cookies = document.cookie.split(';');
@@ -34,7 +34,7 @@ function getCookie(name) {
  * Función que se llama dinámicamente en cada petición
  * Configuración de axios con credenciales y CSRF
  */
-function getAxiosConfig() {
+export function getAxiosConfig() {
     const csrfToken = getCookie('csrftoken');
     
     // Debug: Mostrar token en consola
@@ -528,18 +528,6 @@ export const EventsAPI = {
         }
     },
 
-    async getWithDetails(eventId) {
-        try {
-            const response = await axios.get(
-                `${API_BASE_URL}/FELA/events/${eventId}/`,
-                getAxiosConfig()
-            );
-            return { success: true, data: response.data };
-        } catch (error) {
-            return handleAPIError(error, 'Error al obtener evento con detalles');
-        }
-    },
-
     async createComplete(eventData) {
         try {
             const response = await axios.post(
@@ -592,52 +580,3 @@ export const EventsAPI = {
     }
 };
 
-/**
- * ====================================
- * GEOJSON
- * ====================================
- */
-
-export const GeoJSONAPI = {
-    async getComplete() {
-        try {
-            const response = await axios.get(
-                `${API_BASE_URL}/FELA/geojson/`,
-                getAxiosConfig()
-            );
-            return { success: true, data: response.data };
-        } catch (error) {
-            return handleAPIError(error, 'Error al obtener GeoJSON');
-        }
-    },
-
-    async refresh() {
-        try {
-            const response = await axios.post(
-                `${API_BASE_URL}/FELA/geojson/refresh/`,
-                {},
-                getAxiosConfig()
-            );
-            return { success: true, data: response.data };
-        } catch (error) {
-            return handleAPIError(error, 'Error al refrescar GeoJSON');
-        }
-    }
-};
-
-/**
- * ====================================
- * UTILIDADES
- * ====================================
- */
-
-export const Utils = {
-    async checkAuth() {
-        const result = await AuthAPI.getCurrentUser();
-        return result.success;
-    },
-
-    async getUserInfo() {
-        return await AuthAPI.getCurrentUser();
-    }
-};

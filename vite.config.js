@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import path from 'path';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default defineConfig({
     // Base public path. Change to '/fela/' if deployed in a subdirectory.
@@ -26,13 +27,14 @@ export default defineConfig({
         // Proxy API calls to Django backend during development
         proxy: {
             '/FELA': {
-                target: 'http://localhost:8888',
+                target: API_BASE_URL,
                 changeOrigin: true
             },
             '/auth': {
-                target: 'http://localhost:8888',
+                target: API_BASE_URL,
                 changeOrigin: true
             }
         }
+
     }
 });

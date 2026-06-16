@@ -36,14 +36,7 @@ export function getCookie(name) {
  */
 export function getAxiosConfig() {
     const csrfToken = getCookie('csrftoken');
-    
-    // Debug: Mostrar token en consola
-    if (csrfToken) {
-        console.log('🔑 CSRF Token encontrado:', csrfToken.substring(0, 20) + '...');
-    } else {
-        console.warn('⚠️ CSRF Token no encontrado en cookies');
-    }
-    
+
     return {
         withCredentials: true,
         headers: {

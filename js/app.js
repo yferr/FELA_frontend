@@ -79,6 +79,7 @@ let cityMarkers    = null;
 
 let activeFilters  = { view: 'event-country', language: null, agency: null };
 let allLanguages   = [];
+let allEventTypes  = [];
 
 // ---------------------------------------------------------------------------
 // Map initialisation
@@ -117,7 +118,8 @@ async function loadGeoJsonData() {
         const response = await fetch(GEOJSON_URL);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         geoJsonData  = await response.json();
-        allLanguages = extractAllLanguages(geoJsonData);
+        allLanguages  = extractAllLanguages(geoJsonData);
+        allEventTypes = extractAllEventTypes(geoJsonData);
         populateLanguagesDropdown(allLanguages);
         populateAgenciesDropdown(geoJsonData);
         updateKPIBar(geoJsonData);
@@ -583,7 +585,7 @@ async function loadEventForEdit(eventId) {
     initEditEventForm(editorContent, result.data, () => {
         renderEditorOptions(editorContent);
         loadGeoJsonData();
-    }, allLanguages);
+    }, allLanguages, allEventTypes);
 }
 
 function loadAddPresentationForEvent(eventId, eventTitle) {
@@ -599,7 +601,7 @@ function loadAddPresentationForEvent(eventId, eventTitle) {
     }
 
     // Pre-fill the event so the user skips the search step
-    initAddPresentationForm(editorContent, { id: eventId, title: eventTitle });
+    initAddPresentationForm(editorContent, { id: eventId, title: eventTitle }, allLanguages);
 }
 
 async function deleteEventFromPopup(eventId, eventTitle) {
@@ -671,6 +673,22 @@ function extractAllLanguages(data) {
         )
     );
     return [...langs].sort();
+}
+
+// ---------------------------------------------------------------------------
+// Event type extraction — collects all distinct event.type strings
+// ---------------------------------------------------------------------------
+
+function extractAllEventTypes(data) {
+    const types = new Set();
+    Object.values(data.events || {}).forEach(yearEvents =>
+        Object.values(yearEvents).forEach(eventList =>
+            eventList.forEach(ev => {
+                if (ev.type && ev.type.trim()) types.add(ev.type.trim());
+            })
+        )
+    );
+    return [...types].sort();
 }
 
 // ---------------------------------------------------------------------------
@@ -831,9 +849,9 @@ function renderEditorOptions(container) {
     container.querySelectorAll('.editor-option-btn').forEach(btn => {
         btn.addEventListener('click', e => {
             const action = e.currentTarget.dataset.action;
-            if (action === 'new-event')        initEventForm(container);
-            if (action === 'add-presentation') initAddPresentationForm(container);
-            if (action === 'add-speaker')      initAddSpeakerForm(container);
+            if (action === 'new-event')        initEventForm(container, allLanguages, allEventTypes, () => renderEditorOptions(container));
+            if (action === 'add-presentation') initAddPresentationForm(container, null, allLanguages);
+            if (action === 'add-speaker')      initAddSpeakerForm(container, null, allLanguages);
         });
     });
 }

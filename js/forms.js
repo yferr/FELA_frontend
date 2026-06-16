@@ -34,6 +34,8 @@ let formState = {
 };
 
 let autocompleteInstances = [];
+let currentAvailableEventTypes = [];
+let currentAvailableLanguages  = [];
 
 // ===========================================================================
 // HELPERS
@@ -396,15 +398,17 @@ function createSpeakerNameAutocomplete(inputElement, onSelectCallback) {
 // MAIN EVENT FORM
 // ===========================================================================
 
-export function initEventForm(container) {
+export function initEventForm(container, availableLanguages = [], availableEventTypes = [], onCancel = null) {
     if (!canEdit()) {
         container.innerHTML = `<div class="alert-inline error"><p>⛔ Sin permisos para crear o editar eventos.</p></div>`;
         return;
     }
     resetFormState();
+    currentAvailableLanguages  = availableLanguages;
+    currentAvailableEventTypes = availableEventTypes;
     container.innerHTML = generateFormHTML();
     initAutocompletes();
-    attachEventListeners();
+    attachEventListeners(onCancel);
 }
 
 function generateFormHTML() {
@@ -439,7 +443,10 @@ function generateFormHTML() {
                     </div>
                     <div class="form-group">
                         <label for="event-type">Tipo de evento</label>
-                        <input type="text" id="event-type" class="form-control" placeholder="ej. Conferencia, Taller, Webinar">
+                        <input type="text" id="event-type" class="form-control" list="event-type-list" placeholder="ej. Conferencia, Taller, Webinar">
+                        <datalist id="event-type-list">
+                            ${[...new Set(currentAvailableEventTypes)].sort().map(t => `<option value="${escapeVal(t)}"></option>`).join('')}
+                        </datalist>
                     </div>
                     <div class="form-group" style="grid-column:1/-1;">
                         <label for="event-title">Título del evento *</label>
@@ -461,6 +468,9 @@ function generateFormHTML() {
                     <h4 class="form-section-title" style="margin:0;">📋 Presentaciones</h4>
                     <button type="button" id="add-presentation-btn" class="add-button">➕ Agregar Presentación</button>
                 </div>
+                <datalist id="presentation-language-list">
+                    ${[...new Set(currentAvailableLanguages)].sort().map(l => `<option value="${escapeVal(l)}"></option>`).join('')}
+                </datalist>
                 <div id="presentations-container" class="presentations-list"></div>
             </div>
 
@@ -487,7 +497,7 @@ function generatePresentationHTML(index) {
                 <div class="form-group">
                     <label>Idiomas</label>
                     <div style="display:flex;gap:10px;">
-                        <input type="text" class="form-control language-input" data-presentation-index="${index}" placeholder="ej. Español, Inglés">
+                        <input type="text" class="form-control language-input" data-presentation-index="${index}" list="presentation-language-list" placeholder="ej. Español, Inglés">
                         <button type="button" class="btn btn-outline-secondary add-language-btn" data-index="${index}">➕</button>
                     </div>
                     <div class="chips-container languages-chips" data-presentation-index="${index}"></div>
@@ -726,14 +736,18 @@ function updateCoordsDisplay(type, lat, lon) {
 // EVENT LISTENERS
 // ===========================================================================
 
-function attachEventListeners() {
+function attachEventListeners(onCancel = null) {
     const form = document.getElementById('event-complete-form');
     form.addEventListener('submit', handleFormSubmit);
 
     document.getElementById('cancel-form-btn').addEventListener('click', () => {
         if (confirm('¿Cancelar? Los cambios se perderán.')) {
             resetFormState();
-            initEventForm(document.getElementById('editor-content'));
+            if (onCancel) {
+                onCancel();
+            } else {
+                initEventForm(document.getElementById('editor-content'), currentAvailableLanguages, currentAvailableEventTypes);
+            }
         }
     });
 
@@ -905,7 +919,7 @@ async function handleFormSubmit(e) {
 // ADD PRESENTATION TO EXISTING EVENT
 // ===========================================================================
 
-export function initAddPresentationForm(container, prefilledEvent = null) {
+export function initAddPresentationForm(container, prefilledEvent = null, availableLanguages = []) {
     let selectedEvent = prefilledEvent;
     let localFormState = { languages: [], speakers: [{ name: '', country: null, countryData: null, agency: '' }] };
     let localAutocompleteInstances = [];
@@ -935,7 +949,10 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
                     <div class="form-group">
                         <label>Idiomas</label>
                         <div style="display:flex;gap:10px;">
-                            <input type="text" id="add-pres-language-input" class="form-control" placeholder="ej. Español, Inglés">
+                            <input type="text" id="add-pres-language-input" class="form-control" list="add-pres-language-list" placeholder="ej. Español, Inglés">
+                            <datalist id="add-pres-language-list">
+                                ${[...new Set(availableLanguages)].sort().map(l => `<option value="${escapeVal(l)}"></option>`).join('')}
+                            </datalist>
                             <button type="button" id="add-pres-language-btn" class="btn btn-outline-secondary">➕</button>
                         </div>
                         <div id="add-pres-languages-chips" class="chips-container"></div>
@@ -1189,7 +1206,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
     // -----------------------------------------------------------------------
     // Listeners
     // -----------------------------------------------------------------------
-    document.getElementById('back-to-add-options')?.addEventListener('click', () => initAddOptionsView(container));
+    document.getElementById('back-to-add-options')?.addEventListener('click', () => initAddOptionsView(container, availableLanguages));
     document.getElementById('add-pres-language-btn').addEventListener('click', () => {
         const input = document.getElementById('add-pres-language-input');
         const value = input.value.trim();
@@ -1211,7 +1228,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
         }
     });
     document.getElementById('add-pres-cancel-btn').addEventListener('click', () => {
-        if (confirm('¿Cancelar? Los cambios se perderán.')) initAddOptionsView(container);
+        if (confirm('¿Cancelar? Los cambios se perderán.')) initAddOptionsView(container, availableLanguages);
     });
     document.getElementById('add-presentation-form').addEventListener('submit', handleAddPresentationSubmit);
 
@@ -1339,7 +1356,7 @@ export function initAddPresentationForm(container, prefilledEvent = null) {
 // ADD SPEAKER TO EXISTING PRESENTATION
 // ===========================================================================
 
-export function initAddSpeakerForm(container, prefilledPresentation = null) {
+export function initAddSpeakerForm(container, prefilledPresentation = null, availableLanguages = []) {
     let selectedPresentation = prefilledPresentation;
     let localAutocompleteInstances = [];
     let speakerData = { id: null, name: '', country: null, countryData: null, agency: '' };
@@ -1519,9 +1536,9 @@ export function initAddSpeakerForm(container, prefilledPresentation = null) {
     localAutocompleteInstances.push(agencyAC);
 
     // Listeners
-    document.getElementById('back-to-add-options-2')?.addEventListener('click', () => initAddOptionsView(container));
+    document.getElementById('back-to-add-options-2')?.addEventListener('click', () => initAddOptionsView(container, availableLanguages));
     document.getElementById('add-speaker-cancel-btn').addEventListener('click', () => {
-        if (confirm('¿Cancelar?')) initAddOptionsView(container);
+        if (confirm('¿Cancelar?')) initAddOptionsView(container, availableLanguages);
     });
 
     // -----------------------------------------------------------------------
@@ -1596,7 +1613,7 @@ export function initAddSpeakerForm(container, prefilledPresentation = null) {
 // EDIT EVENT FORM
 // ===========================================================================
 
-export function initEditEventForm(container, eventData, onSave, availableLanguages = []) {
+export function initEditEventForm(container, eventData, onSave, availableLanguages = [], availableEventTypes = []) {
     if (!canEdit()) {
         container.innerHTML = `<div class="alert-inline error"><p>⛔ Sin permisos para editar eventos.</p></div>`;
         return;
@@ -1629,7 +1646,10 @@ export function initEditEventForm(container, eventData, onSave, availableLanguag
                     </div>
                     <div class="form-group">
                         <label for="edit-ev-type">Tipo</label>
-                        <input type="text" id="edit-ev-type" class="form-control" value="${escapeVal(eventData.type)}" placeholder="ej. Presencial">
+                        <input type="text" id="edit-ev-type" class="form-control" list="edit-ev-type-list" value="${escapeVal(eventData.type)}" placeholder="ej. Presencial">
+                        <datalist id="edit-ev-type-list">
+                            ${[...new Set(availableEventTypes)].sort().map(t => `<option value="${escapeVal(t)}"></option>`).join('')}
+                        </datalist>
                     </div>
                     <div class="form-group">
                         <label for="edit-ev-country">País</label>
@@ -1805,7 +1825,7 @@ export function initEditEventForm(container, eventData, onSave, availableLanguag
                 if (!r.success) { alert('Error cargando presentación: ' + r.error); return; }
                 destroyAllACs();
                 initEditPresentationForm(container, r.data,
-                    () => initEditEventForm(container, eventData, onSave, availableLanguages),
+                    () => initEditEventForm(container, eventData, onSave, availableLanguages, availableEventTypes),
                     onSave,
                     availableLanguages
                 );
@@ -2157,7 +2177,7 @@ export function initEditPresentationForm(container, presentationData, onBack, on
 // ADD OPTIONS VIEW (tab reset)
 // ===========================================================================
 
-function initAddOptionsView(container) {
+function initAddOptionsView(container, availableLanguages = []) {
     container.innerHTML = `
         <div class="add-options">
             <button class="add-option-btn" data-action="add-presentation">
@@ -2173,8 +2193,8 @@ function initAddOptionsView(container) {
     document.querySelectorAll('.add-option-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const action = e.currentTarget.dataset.action;
-            if (action === 'add-presentation') initAddPresentationForm(container);
-            else if (action === 'add-speaker')  initAddSpeakerForm(container);
+            if (action === 'add-presentation') initAddPresentationForm(container, null, availableLanguages);
+            else if (action === 'add-speaker')  initAddSpeakerForm(container, null, availableLanguages);
         });
     });
 }

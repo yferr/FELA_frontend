@@ -56,7 +56,7 @@ import { renderStats, updateKPIBar }       from './stats.js';
 // Constants
 // ---------------------------------------------------------------------------
 
-const GEOJSON_URL = '/FELA/geojson/';
+const GEOJSON_URL = '/fela_api/FELA/geojson/';
 const TILE_URL    = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIB = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
